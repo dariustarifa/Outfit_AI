@@ -25,6 +25,7 @@ import { fetchWeather } from "@/src/services/weather";
 import { recommendDailyOutfit } from "@/src/services/daily-recommendation";
 import { useColors } from "@/src/theme";
 import { selection } from "@/src/haptics";
+import { getStartupScreen } from "@/src/onboarding-progress";
 
 type Screen = "home" | "profile";
 
@@ -53,6 +54,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
+  const startupScreen = getStartupScreen(loading, profile);
   const [screen, setScreen] = useState<Screen>("home");
   const [clockDate, setClockDate] = useState(() => new Date());
   const dailyItems = useMemo(
@@ -129,7 +131,7 @@ export default function HomeScreen() {
     router.push("/item" as never);
   };
 
-  if (loading) {
+  if (startupScreen === "loading") {
     return (
       <GradientBackground style={styles.fill}>
         <SafeAreaView style={styles.fill}>
@@ -149,7 +151,7 @@ export default function HomeScreen() {
     );
   }
 
-  if (!profile?.onboardingCompleted) {
+  if (startupScreen === "onboarding") {
     return <OnboardingScreen />;
   }
 

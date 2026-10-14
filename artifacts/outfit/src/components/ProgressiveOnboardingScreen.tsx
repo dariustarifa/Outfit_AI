@@ -38,9 +38,16 @@ import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 import { useApp } from "../context/AppContext";
 import type { Profile } from "../types";
 import { success } from "../haptics";
-import { formatCity, searchCities, type CityResult } from "../services/geocoding";
+import {
+  formatCity,
+  searchCities,
+  type CityResult,
+} from "../services/geocoding";
+import {
+  getInitialOnboardingStep,
+  type OnboardingStep,
+} from "../onboarding-progress";
 
-type Step = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 type SearchState = "idle" | "waiting" | "loading" | "success" | "error";
 
 interface ProfileForm {
@@ -105,30 +112,6 @@ function isProfileReady(profile: Profile): boolean {
   );
 }
 
-function initialStep(profile: Profile | null): Step {
-  if (!profile || !profile.name.trim()) return 0;
-  if (!profile.preferredName?.trim()) return 1;
-  if (!Number.isInteger(profile.age) || profile.age < 14 || profile.age > 99) {
-    return 2;
-  }
-  if (
-    !Number.isInteger(profile.heightCm) ||
-    profile.heightCm < 100 ||
-    profile.heightCm > 230
-  ) {
-    return 3;
-  }
-  if (
-    !profile.city.trim() ||
-    !Number.isFinite(profile.latitude) ||
-    !Number.isFinite(profile.longitude)
-  ) {
-    return 4;
-  }
-  if (!profile.photoConsent) return 5;
-  return 6;
-}
-
 export default function ProgressiveOnboardingScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -143,7 +126,7 @@ export default function ProgressiveOnboardingScreen() {
     bodyPhotoUri: "",
     photoConsent: false,
   });
-  const [step, setStep] = useState<Step>(0);
+  const [step, setStep] = useState<OnboardingStep>(0);
   const [selectedCity, setSelectedCity] = useState<CityResult | null>(null);
   const [cityResults, setCityResults] = useState<CityResult[]>([]);
   const [searchState, setSearchState] = useState<SearchState>("idle");
@@ -170,7 +153,7 @@ export default function ProgressiveOnboardingScreen() {
       router.replace("/onboarding/intro" as never);
       return;
     }
-    setStep(initialStep(profile));
+    setStep(getInitialOnboardingStep(profile));
   }, [loading, profile]);
 
   useEffect(() => {
@@ -283,7 +266,9 @@ export default function ProgressiveOnboardingScreen() {
         void success();
         router.replace("/onboarding/intro" as never);
       } else {
-        setStep((current) => Math.min(current + 1, STEP_COUNT - 1) as Step);
+        setStep(
+          (current) => Math.min(current + 1, STEP_COUNT - 1) as OnboardingStep,
+        );
       }
     } catch {
       setMessage(
@@ -299,7 +284,7 @@ export default function ProgressiveOnboardingScreen() {
   const goBack = () => {
     if (step === 0 || saving) return;
     setMessage("");
-    setStep((current) => Math.max(current - 1, 0) as Step);
+    setStep((current) => Math.max(current - 1, 0) as OnboardingStep);
   };
 
   const choosePhoto = async () => {
