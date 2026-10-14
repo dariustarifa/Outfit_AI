@@ -198,8 +198,8 @@ const styles = StyleSheet.create({
   },
   greetingLine: {
     fontFamily: "Melodrama_500Medium",
-    fontSize: 96,
-    lineHeight: 100,
+    fontSize: 100,
+    lineHeight: 104,
     includeFontPadding: false,
   },
   weather: {

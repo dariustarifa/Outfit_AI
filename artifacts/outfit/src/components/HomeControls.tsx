@@ -257,12 +257,12 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
   }));
 
   const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: activeTabProgress.value * ((width - 88) * (2 / 3)) }],
+    transform: [{ translateX: activeTabProgress.value * ((width - 104) * (2 / 3)) }],
   }));
 
   const canSend = Boolean(text.trim()) || attachments.length > 0;
-  const safeScreenWidth = width - 88;
-  const highlightStart = safeScreenWidth / 6 - 28;
+  const safeScreenWidth = width - 104;
+  const highlightStart = safeScreenWidth / 6 - 25;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -294,7 +294,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
             entering={FadeIn.duration(250).delay(240)}
             style={[
               styles.morphShell,
-              { width: width - 40, marginBottom: 24 },
+              { width: width - 40, marginBottom: 32 },
               morphStyle,
             ]}
           >
@@ -420,71 +420,76 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
 
         <Animated.View
           entering={FadeIn.duration(250).delay(320)}
-          style={[styles.tabBarClip, tabBarStyle]}
-          pointerEvents={expanded ? "none" : "auto"}
+          style={styles.tabBarEntrance}
+          pointerEvents="box-none"
         >
-          <GlassView
-            borderRadius={nativeLayout.pillRadius}
-            style={[styles.tabBar, { width: safeScreenWidth }]}
+          <Animated.View
+            style={[styles.tabBarClip, tabBarStyle]}
+            pointerEvents={expanded ? "none" : "auto"}
           >
-            <View style={styles.tabBarContent}>
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.activeHighlight,
-                  { left: highlightStart },
-                  highlightStyle,
-                ]}
-              >
-                <GlassView
-                  borderRadius={nativeLayout.pillRadius}
-                  style={styles.highlightGlass}
+            <GlassView
+              borderRadius={nativeLayout.pillRadius}
+              style={[styles.tabBar, { width: safeScreenWidth }]}
+            >
+              <View style={styles.tabBarContent}>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.activeHighlight,
+                    { left: highlightStart },
+                    highlightStyle,
+                  ]}
                 >
-                  <View style={StyleSheet.absoluteFill} />
-                </GlassView>
-              </Animated.View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Inicio"
-                accessibilityState={{ selected: screen === "home" }}
-                onPress={() => {
-                  void tapLight();
-                  onScreenChange("home");
-                }}
-                style={styles.tabButton}
-              >
-                <Home
-                  size={26}
-                  color={screen === "home" ? colors.gold : colors.iconInactive}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Añadir"
-                onPress={() => void tapLight()}
-                style={styles.tabButton}
-              >
-                <Plus size={26} color={colors.iconInactive} strokeWidth={1.5} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Perfil"
-                accessibilityState={{ selected: screen === "profile" }}
-                onPress={() => {
-                  void tapLight();
-                  onScreenChange("profile");
-                }}
-                style={styles.tabButton}
-              >
-                <User
-                  size={26}
-                  color={screen === "profile" ? colors.gold : colors.iconInactive}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
-            </View>
-          </GlassView>
+                  <GlassView
+                    borderRadius={nativeLayout.pillRadius}
+                    style={styles.highlightGlass}
+                  >
+                    <View style={StyleSheet.absoluteFill} />
+                  </GlassView>
+                </Animated.View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Inicio"
+                  accessibilityState={{ selected: screen === "home" }}
+                  onPress={() => {
+                    void tapLight();
+                    onScreenChange("home");
+                  }}
+                  style={styles.tabButton}
+                >
+                  <Home
+                    size={26}
+                    color={screen === "home" ? colors.gold : colors.iconInactive}
+                    strokeWidth={1.5}
+                  />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Añadir"
+                  onPress={() => void tapLight()}
+                  style={styles.tabButton}
+                >
+                  <Plus size={26} color={colors.iconInactive} strokeWidth={1.5} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Perfil"
+                  accessibilityState={{ selected: screen === "profile" }}
+                  onPress={() => {
+                    void tapLight();
+                    onScreenChange("profile");
+                  }}
+                  style={styles.tabButton}
+                >
+                  <User
+                    size={26}
+                    color={screen === "profile" ? colors.gold : colors.iconInactive}
+                    strokeWidth={1.5}
+                  />
+                </Pressable>
+              </View>
+            </GlassView>
+          </Animated.View>
         </Animated.View>
       </View>
     </View>
@@ -502,7 +507,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: "center",
-    paddingBottom: 8,
+    paddingBottom: 20,
     zIndex: 2,
   },
   morphShell: {
@@ -606,8 +611,12 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
+  tabBarEntrance: {
+    width: "100%",
+    alignItems: "center",
+  },
   tabBar: {
-    height: 70,
+    height: 62,
   },
   tabBarContent: {
     flex: 1,
@@ -617,16 +626,16 @@ const styles = StyleSheet.create({
   },
   activeHighlight: {
     position: "absolute",
-    top: 7,
-    width: 56,
-    height: 56,
+    top: 6,
+    width: 50,
+    height: 50,
   },
   highlightGlass: {
     flex: 1,
   },
   tabButton: {
     flex: 1,
-    height: 70,
+    height: 62,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
