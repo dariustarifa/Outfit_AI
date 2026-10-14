@@ -14,7 +14,10 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
@@ -80,83 +83,95 @@ export default function WardrobeOnboardingScreen() {
     toastTimer.current = setTimeout(() => setToast(""), 2400);
   }, []);
 
-  const chooseFromGallery = useCallback(async () => {
-    if (gallerySaving) return;
-    setError("");
-    setToast("");
-    setGallerySaving(true);
-    void selection();
+  const chooseFromGallery = useCallback(
+    async (allowMultiple = true) => {
+      if (gallerySaving) return;
+      setError("");
+      setToast("");
+      setGallerySaving(true);
+      void selection();
 
-    try {
-      if (Platform.OS !== "web" && !mediaPermission?.granted) {
-        const permission = await requestMediaPermission();
-        if (!permission.granted) {
-          if (
-            permission.status === "denied" &&
-            !permission.canAskAgain
-          ) {
-            Alert.alert(
-              "Acceso a fotos desactivado",
-              "Activa el acceso a tus fotos en los ajustes del dispositivo.",
-              [
-                { text: "Ahora no", style: "cancel" },
-                {
-                  text: "Abrir ajustes",
-                  onPress: () => {
-                    void Linking.openSettings().catch(() => undefined);
+      try {
+        if (Platform.OS !== "web" && !mediaPermission?.granted) {
+          const permission = await requestMediaPermission();
+          if (!permission.granted) {
+            if (permission.status === "denied" && !permission.canAskAgain) {
+              Alert.alert(
+                "Acceso a fotos desactivado",
+                "Activa el acceso a tus fotos en los ajustes del dispositivo.",
+                [
+                  { text: "Ahora no", style: "cancel" },
+                  {
+                    text: "Abrir ajustes",
+                    onPress: () => {
+                      void Linking.openSettings().catch(() => undefined);
+                    },
                   },
-                },
-              ],
-            );
+                ],
+              );
+            }
+            setError("Necesitamos acceso a tus fotos para elegir imágenes.");
+            return;
           }
-          setError("Necesitamos acceso a tus fotos para elegir imágenes.");
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsMultipleSelection: allowMultiple,
+          selectionLimit: allowMultiple ? 0 : 1,
+          quality: 0.85,
+        });
+        if (result.canceled || result.assets.length === 0) return;
+
+        if (!allowMultiple) {
+          const selectedPhoto = result.assets[0]?.uri;
+          if (!selectedPhoto) {
+            setError("No pudimos leer esa foto. Prueba a elegir otra.");
+            return;
+          }
+          setPhotoUri(selectedPhoto);
+          setNote("");
+          setCameraReady(false);
           return;
         }
-      }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsMultipleSelection: true,
-        selectionLimit: 0,
-        quality: 0.85,
-      });
-      if (result.canceled || result.assets.length === 0) return;
-
-      setGalleryProgress({ completed: 0, total: result.assets.length });
-      const saved = await saveGallerySelection(
-        result.assets,
-        addItem,
-        setGalleryProgress,
-      );
-
-      if (saved.added > 0) {
-        await success();
-        showToast(
-          saved.added === 1
-            ? "1 prenda añadida"
-            : `${saved.added} prendas añadidas`,
+        setGalleryProgress({ completed: 0, total: result.assets.length });
+        const saved = await saveGallerySelection(
+          result.assets,
+          addItem,
+          setGalleryProgress,
         );
+
+        if (saved.added > 0) {
+          await success();
+          showToast(
+            saved.added === 1
+              ? "1 prenda añadida"
+              : `${saved.added} prendas añadidas`,
+          );
+        }
+        if (saved.failed > 0) {
+          setError(
+            saved.added > 0
+              ? `No se pudieron guardar ${saved.failed} fotos.`
+              : "No se pudieron guardar las fotos. Inténtalo de nuevo.",
+          );
+        }
+      } catch {
+        setError("No se pudo abrir la galería. Inténtalo de nuevo.");
+      } finally {
+        setGallerySaving(false);
+        setGalleryProgress(null);
       }
-      if (saved.failed > 0) {
-        setError(
-          saved.added > 0
-            ? `No se pudieron guardar ${saved.failed} fotos.`
-            : "No se pudieron guardar las fotos. Inténtalo de nuevo.",
-        );
-      }
-    } catch {
-      setError("No se pudo abrir la galería. Inténtalo de nuevo.");
-    } finally {
-      setGallerySaving(false);
-      setGalleryProgress(null);
-    }
-  }, [
-    addItem,
-    gallerySaving,
-    mediaPermission?.granted,
-    requestMediaPermission,
-    showToast,
-  ]);
+    },
+    [
+      addItem,
+      gallerySaving,
+      mediaPermission?.granted,
+      requestMediaPermission,
+      showToast,
+    ],
+  );
 
   const requestCameraAccess = useCallback(async () => {
     setError("");
@@ -195,7 +210,9 @@ export default function WardrobeOnboardingScreen() {
       setNote("");
       setCameraReady(false);
     } catch {
-      setError("No se pudo tomar la foto. Comprueba la cámara e inténtalo de nuevo.");
+      setError(
+        "No se pudo tomar la foto. Comprueba la cámara e inténtalo de nuevo.",
+      );
     } finally {
       setTakingPhoto(false);
     }
@@ -231,12 +248,7 @@ export default function WardrobeOnboardingScreen() {
   }, [addItem, note, photoUri, savingPhoto]);
 
   const confirmWardrobe = useCallback(async () => {
-    if (
-      wardrobe.length === 0 ||
-      gallerySaving ||
-      confirming ||
-      savingPhoto
-    ) {
+    if (wardrobe.length === 0 || gallerySaving || confirming || savingPhoto) {
       return;
     }
 
@@ -258,7 +270,10 @@ export default function WardrobeOnboardingScreen() {
     await success();
     try {
       await setProfile({ ...profile, onboardingCompleted: true });
-      router.replace("/");
+      router.replace({
+        pathname: "/wardrobe",
+        params: { source: "onboarding" },
+      } as never);
     } catch {
       setError("No se pudo completar el registro. Inténtalo de nuevo.");
       setConfirming(false);
@@ -273,9 +288,8 @@ export default function WardrobeOnboardingScreen() {
     wardrobe.length,
   ]);
 
-  const countLabel = wardrobe.length === 1
-    ? "1 prenda"
-    : `${wardrobe.length} prendas`;
+  const countLabel =
+    wardrobe.length === 1 ? "1 prenda" : `${wardrobe.length} prendas`;
   const previewHeight = Math.max(220, Math.min(windowHeight * 0.44, 460));
   const cameraGranted = cameraPermission?.granted === true;
   const cameraPermissionBlocked =
@@ -354,7 +368,9 @@ export default function WardrobeOnboardingScreen() {
                 />
               </GlassView>
               <View style={styles.noteGroup}>
-                <Text style={[styles.sectionLabel, { color: colors.textPrimary }]}>
+                <Text
+                  style={[styles.sectionLabel, { color: colors.textPrimary }]}
+                >
                   NOTA (OPCIONAL)
                 </Text>
                 <TextInput
@@ -364,13 +380,17 @@ export default function WardrobeOnboardingScreen() {
                   onChangeText={setNote}
                   placeholder="¿Qué prenda es? ¿Te queda grande, ajustada…?"
                   placeholderTextColor={colors.textSecondary}
+                  maxLength={160}
                   multiline
                   textAlignVertical="top"
                   returnKeyType="default"
                   blurOnSubmit={false}
                   onFocus={() => {
                     setTimeout(
-                      () => previewScrollRef.current?.scrollToEnd({ animated: true }),
+                      () =>
+                        previewScrollRef.current?.scrollToEnd({
+                          animated: true,
+                        }),
                       180,
                     );
                   }}
@@ -383,6 +403,14 @@ export default function WardrobeOnboardingScreen() {
                     },
                   ]}
                 />
+                <Text
+                  style={[
+                    styles.characterCount,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {note.length}/160
+                </Text>
               </View>
               {error ? (
                 <Text
@@ -407,7 +435,10 @@ export default function WardrobeOnboardingScreen() {
                 >
                   <GlassView
                     borderRadius={nativeLayout.pillRadius}
-                    style={[styles.secondaryAction, { borderColor: colors.border }]}
+                    style={[
+                      styles.secondaryAction,
+                      { borderColor: colors.border },
+                    ]}
                   >
                     <ArrowLeft size={17} color={colors.primary} />
                     <Text
@@ -481,7 +512,10 @@ export default function WardrobeOnboardingScreen() {
           <View style={styles.cameraTopBar}>
             <GlassView
               borderRadius={nativeLayout.pillRadius}
-              style={[styles.countChip, { borderColor: nativeEffects.glass.borderColor }]}
+              style={[
+                styles.countChip,
+                { borderColor: nativeEffects.glass.borderColor },
+              ]}
             >
               <Text style={[styles.countText, { color: colors.textPrimary }]}>
                 {countLabel}
@@ -505,8 +539,14 @@ export default function WardrobeOnboardingScreen() {
                     { borderColor: nativeEffects.glass.borderColor },
                   ]}
                 >
-                  <Text style={[styles.confirmText, { color: colors.textPrimary }]}>
-                    {confirming ? "Guardando…" : fromPlus ? "Listo" : "Confirmar armario"}
+                  <Text
+                    style={[styles.confirmText, { color: colors.textPrimary }]}
+                  >
+                    {confirming
+                      ? "Guardando…"
+                      : fromPlus
+                        ? "Listo"
+                        : "Confirmar armario"}
                   </Text>
                 </GlassView>
               </Pressable>
@@ -523,7 +563,12 @@ export default function WardrobeOnboardingScreen() {
                 ) : (
                   <ActivityIndicator color={colors.primary} />
                 )}
-                <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>
+                <Text
+                  style={[
+                    styles.permissionTitle,
+                    { color: colors.textPrimary },
+                  ]}
+                >
                   Necesitamos acceso a la cámara
                 </Text>
                 <Text
@@ -562,7 +607,7 @@ export default function WardrobeOnboardingScreen() {
                   accessibilityRole="button"
                   testID="choose-wardrobe-gallery"
                   disabled={gallerySaving}
-                  onPress={() => void chooseFromGallery()}
+                  onPress={() => void chooseFromGallery(false)}
                   style={({ pressed }) => [
                     styles.permissionButton,
                     { backgroundColor: colors.primary },
@@ -577,7 +622,29 @@ export default function WardrobeOnboardingScreen() {
                       { color: colors.primaryForeground },
                     ]}
                   >
-                    {gallerySaving ? "Guardando…" : "Elegir de la galería"}
+                    {gallerySaving ? "Abriendo…" : "Elegir una foto"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Añadir varias prendas desde la galería"
+                  testID="choose-multiple-wardrobe-gallery"
+                  disabled={gallerySaving}
+                  onPress={() => void chooseFromGallery(true)}
+                  style={({ pressed }) => [
+                    styles.permissionSecondary,
+                    gallerySaving && styles.disabledButton,
+                    pressed && !gallerySaving && styles.pressed,
+                  ]}
+                >
+                  <Plus size={16} color={colors.primary} />
+                  <Text
+                    style={[
+                      styles.permissionSecondaryText,
+                      { color: colors.primary },
+                    ]}
+                  >
+                    Añadir varias fotos
                   </Text>
                 </Pressable>
                 {cameraPermissionBlocked ? (
@@ -629,7 +696,10 @@ export default function WardrobeOnboardingScreen() {
                     >
                       <ActivityIndicator color={colors.primary} size="small" />
                       <Text
-                        style={[styles.noticeText, { color: colors.textPrimary }]}
+                        style={[
+                          styles.noticeText,
+                          { color: colors.textPrimary },
+                        ]}
                       >
                         Guardando {galleryProgress.completed} de{" "}
                         {galleryProgress.total}…
@@ -643,7 +713,10 @@ export default function WardrobeOnboardingScreen() {
                     >
                       <Text
                         accessibilityLiveRegion="polite"
-                        style={[styles.noticeText, { color: colors.textPrimary }]}
+                        style={[
+                          styles.noticeText,
+                          { color: colors.textPrimary },
+                        ]}
                       >
                         {toast}
                       </Text>
@@ -656,7 +729,10 @@ export default function WardrobeOnboardingScreen() {
                     >
                       <Text
                         accessibilityRole="alert"
-                        style={[styles.noticeText, { color: colors.destructive }]}
+                        style={[
+                          styles.noticeText,
+                          { color: colors.destructive },
+                        ]}
                       >
                         {error}
                       </Text>
@@ -666,10 +742,10 @@ export default function WardrobeOnboardingScreen() {
                 <View style={styles.cameraBottomBar}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Elegir varias fotos de la galería"
-                    testID="open-wardrobe-gallery"
+                    accessibilityLabel="Elegir una foto de la galería"
+                    testID="choose-wardrobe-gallery"
                     disabled={gallerySaving || confirming}
-                    onPress={() => void chooseFromGallery()}
+                    onPress={() => void chooseFromGallery(false)}
                     style={({ pressed }) => [
                       styles.roundButton,
                       pressed && !gallerySaving && styles.pressed,
@@ -711,7 +787,28 @@ export default function WardrobeOnboardingScreen() {
                       />
                     )}
                   </Pressable>
-                  <View style={styles.bottomBarSpacer} />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Elegir varias fotos de la galería"
+                    testID="open-wardrobe-gallery"
+                    disabled={gallerySaving || confirming}
+                    onPress={() => void chooseFromGallery(true)}
+                    style={({ pressed }) => [
+                      styles.roundButton,
+                      pressed && !gallerySaving && styles.pressed,
+                      gallerySaving && styles.disabledButton,
+                    ]}
+                  >
+                    <GlassView
+                      borderRadius={nativeLayout.pillRadius}
+                      style={[
+                        styles.roundButtonGlass,
+                        { borderColor: nativeEffects.glass.borderColor },
+                      ]}
+                    >
+                      <Plus size={22} color={colors.textPrimary} />
+                    </GlassView>
+                  </Pressable>
                 </View>
               </>
             )}
@@ -794,7 +891,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bottomBarSpacer: { width: 56, height: 56 },
   shutterOuter: {
     width: 72,
     height: 72,
@@ -897,6 +993,11 @@ const styles = StyleSheet.create({
     fontFamily: "Satoshi_400Regular",
     fontSize: 15,
     lineHeight: 22,
+  },
+  characterCount: {
+    alignSelf: "flex-end",
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 12,
   },
   previewActions: {
     flexDirection: "row",

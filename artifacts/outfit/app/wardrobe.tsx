@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -35,6 +35,7 @@ import { selection, success } from "@/src/haptics";
 
 export default function WardrobeScreen() {
   const colors = useColors();
+  const { source } = useLocalSearchParams<{ source?: string }>();
   const { wardrobe, loading, error, removeItem } = useApp();
   const [query, setQuery] = useState("");
   const filteredWardrobe = useMemo(
@@ -94,6 +95,11 @@ export default function WardrobeScreen() {
     }
   }, []);
 
+  const backHome = useCallback(() => {
+    if (source === "onboarding") router.replace("/");
+    else router.back();
+  }, [source]);
+
   const renderItem = useCallback(
     ({ item }: { item: WardrobeItem }) => (
       <View style={styles.itemColumn}>
@@ -129,11 +135,16 @@ export default function WardrobeScreen() {
               }}
               style={styles.deleteButton}
             >
-              <GlassView borderRadius={nativeLayout.pillRadius} style={styles.iconGlass}>
+              <GlassView
+                borderRadius={nativeLayout.pillRadius}
+                style={styles.iconGlass}
+              >
                 <Trash2 size={17} color={colors.foreground} />
               </GlassView>
             </Pressable>
-            <View style={[styles.editHint, { backgroundColor: colors.primary }]}>
+            <View
+              style={[styles.editHint, { backgroundColor: colors.primary }]}
+            >
               <ArrowUpRight size={16} color={colors.primaryForeground} />
             </View>
           </View>
@@ -174,7 +185,7 @@ export default function WardrobeScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Volver al inicio"
                   testID="back-to-home"
-                  onPress={() => router.back()}
+                  onPress={backHome}
                   hitSlop={10}
                   style={styles.backButton}
                 >
@@ -193,7 +204,9 @@ export default function WardrobeScreen() {
                   <Text style={[styles.count, { color: colors.textPrimary }]}>
                     {loading ? "…" : wardrobe.length}
                   </Text>
-                  <Text style={[styles.countLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[styles.countLabel, { color: colors.textSecondary }]}
+                  >
                     prendas
                   </Text>
                 </View>
@@ -249,7 +262,12 @@ export default function WardrobeScreen() {
                 ]}
               >
                 <Plus size={20} color={colors.primaryForeground} />
-                <Text style={[styles.addButtonText, { color: colors.primaryForeground }]}>
+                <Text
+                  style={[
+                    styles.addButtonText,
+                    { color: colors.primaryForeground },
+                  ]}
+                >
                   Añadir prenda
                 </Text>
               </Pressable>
@@ -262,7 +280,9 @@ export default function WardrobeScreen() {
           }
           ListEmptyComponent={
             loading ? (
-              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.emptyTitle, { color: colors.textSecondary }]}
+              >
                 Preparando tu armario…
               </Text>
             ) : wardrobe.length > 0 ? (
@@ -276,11 +296,16 @@ export default function WardrobeScreen() {
                   >
                     <Search size={25} color={colors.textPrimary} />
                   </View>
-                  <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                  <Text
+                    style={[styles.emptyTitle, { color: colors.textPrimary }]}
+                  >
                     No encontramos prendas
                   </Text>
-                  <Text style={[styles.emptyCopy, { color: colors.textSecondary }]}>
-                    Prueba con otra palabra o borra la búsqueda para ver todo tu armario.
+                  <Text
+                    style={[styles.emptyCopy, { color: colors.textSecondary }]}
+                  >
+                    Prueba con otra palabra o borra la búsqueda para ver todo tu
+                    armario.
                   </Text>
                   <Pressable
                     accessibilityRole="button"
@@ -292,7 +317,12 @@ export default function WardrobeScreen() {
                       pressed && styles.pressed,
                     ]}
                   >
-                    <Text style={[styles.clearSearchActionText, { color: colors.textPrimary }]}>
+                    <Text
+                      style={[
+                        styles.clearSearchActionText,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
                       Borrar búsqueda
                     </Text>
                   </Pressable>
@@ -309,11 +339,16 @@ export default function WardrobeScreen() {
                   >
                     <Shirt size={25} color={colors.textPrimary} />
                   </View>
-                  <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                  <Text
+                    style={[styles.emptyTitle, { color: colors.textPrimary }]}
+                  >
                     Tu armario empieza aquí
                   </Text>
-                  <Text style={[styles.emptyCopy, { color: colors.textSecondary }]}>
-                    Haz una foto o elige una de tu galería para guardar tu primera prenda.
+                  <Text
+                    style={[styles.emptyCopy, { color: colors.textSecondary }]}
+                  >
+                    Haz una foto o elige una de tu galería para guardar tu
+                    primera prenda.
                   </Text>
                 </View>
               </GlassView>
