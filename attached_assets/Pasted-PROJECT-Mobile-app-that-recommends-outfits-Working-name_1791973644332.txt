@@ -1,0 +1,94 @@
+PROJECT: Mobile app that recommends outfits. Working name: "Outfit".
+
+READ THIS FIRST
+This project will be sent to you in several messages (phases). In THIS message, do ONLY the "SETUP TASKS" at the end. Do NOT build any real screen yet. Read everything before writing code.
+
+APP IDEA (context only)
+1. The user enters name, age, height, a full-body photo and their city.
+2. The user photographs their clothes (the "wardrobe"), with an optional note per photo.
+3. The home screen greets the user, shows time and local weather, and has a button "¿Cuál es el plan de hoy?". The user writes a request and the app recommends outfits using the user's own clothes and the weather.
+4. A profile screen lets the user edit their data and their wardrobe.
+
+LANGUAGE RULES
+- Everything the user sees is in SPANISH. Exact Spanish texts are written in quotes in the prompts. Use them exactly.
+- Code, file names, variable names and comments are in ENGLISH.
+
+TECH STACK (use exactly this, do not add or replace libraries)
+- Expo (React Native) + TypeScript + Expo Router.
+- This is a NATIVE mobile app. Do NOT build a website. Do NOT use HTML, CSS or react-dom.
+- Libraries: expo-font, expo-blur, expo-haptics, expo-linear-gradient, react-native-svg, react-native-reanimated, react-native-gesture-handler, expo-camera, expo-image-picker, expo-document-picker, expo-file-system, @react-native-async-storage/async-storage, lucide-react-native (icons).
+- Target iOS first. The app must not crash on Android.
+- No backend, no login. All data is stored on the device.
+
+FONTS
+- "Satoshi" (400, 500, 700): ALL text.
+- "Melodrama" (500): ONLY big headlines.
+- Files go in assets/fonts/ with these names: Satoshi-Regular.otf, Satoshi-Medium.otf, Satoshi-Bold.otf, Melodrama-Medium.otf (.ttf is also fine).
+- Load them with expo-font. Do not render any screen until fonts are loaded.
+- If the files are missing: do NOT invent them. Use a temporary fallback font, write a TODO in NOTES.md, and tell me to upload the files.
+
+DESIGN TOKENS (create src/theme.ts and use ONLY these values everywhere)
+colors:
+  backgroundTop     #F5F2EB
+  backgroundBottom  #DDD3C7
+  textPrimary       #2B2B2E
+  textSecondary     #6B665F
+  gold              #9A7B4F
+  iconInactive      #6B665F
+  glassBorder       rgba(255,255,255,0.70)
+  blobSand          #E6D2B8
+  blobGold          #D8BC8C
+  blobSage          #C9D3C1
+radius: pill 999, card 24
+screen horizontal padding: 24
+Primary button style: solid pill, background #2B2B2E, text #F5F2EB, height 56. Disabled = opacity 0.4.
+
+BACKGROUND (component GradientBackground)
+- Vertical LinearGradient from backgroundTop to backgroundBottom.
+- Plus 3 soft color blobs made with react-native-svg RadialGradient circles (about 320pt diameter, center color at 60% opacity fading to 0% at the edge): sand at bottom-left, gold at bottom-right, sage at middle-right. They sit in the lower half of the screen.
+- The blobs are REQUIRED: the glass effect needs colored content behind it to look like glass.
+
+GLASS EFFECT (component GlassView, reusable)
+Goal: crystal clear glass. NOT frosted, NOT matte, NOT a solid white box. Low-to-medium opacity.
+Layers from bottom to top:
+1. BlurView from expo-blur, intensity 45, tint "light".
+2. LinearGradient overlay from rgba(255,255,255,0.32) (top-left) to rgba(255,255,255,0.06) (bottom-right).
+3. 1px border with color glassBorder.
+4. Soft shadow: color #000, opacity 0.08, radius 24, offsetY 8.
+The container uses overflow hidden and a borderRadius prop. On Android, if blur does not work, fall back to a plain rgba(255,255,255,0.35) background.
+
+HAPTICS (src/haptics.ts, wrap every call in try/catch)
+- tapLight(): Haptics.impactAsync(Light)
+- selection(): Haptics.selectionAsync()
+- success(): Haptics.notificationAsync(Success)
+
+ANIMATION RULES (react-native-reanimated)
+- Springs: damping 20, stiffness 220, mass 1.
+- Fades: 250 ms.
+- Every pressable button scales to 0.97 while pressed.
+- Screens enter with fade + 12pt upward slide.
+- Never use abrupt jumps.
+
+DATA (src/types.ts + src/storage.ts + AppContext)
+Profile { name: string; age: number; heightCm: number; bodyPhotoUri: string; city: string; latitude: number; longitude: number; onboardingCompleted: boolean }
+WardrobeItem { id: string; imageUri: string; note: string; createdAt: number }
+- Save profile and wardrobe in AsyncStorage.
+- Every photo taken or picked must be COPIED into the app's document directory (expo-file-system), and the copied path is what you store. Otherwise the images disappear.
+- AppContext exposes: profile, wardrobe, setProfile, addItem, updateItem, removeItem, loading.
+
+NAVIGATION RULE ON APP START
+- No profile -> onboarding. Profile exists but onboardingCompleted is false -> continue onboarding. Otherwise -> home.
+
+GENERAL RULES (apply to every phase)
+- Do only what the current message asks. Do not add features, screens, libraries or colors that were not requested.
+- Do NOT draw a fake status bar, a phone frame, a fake home indicator or fake battery/clock icons. The screenshot shows a phone mockup; the real device draws those.
+- If something is ambiguous, choose the simplest option and write the decision in NOTES.md.
+- When finished: run the app, fix all errors, then reply with 4 short parts: (1) files created, (2) what works, (3) what does not work yet, (4) what I should test.
+
+SETUP TASKS (do only these now)
+1. Create the project and folder structure (app/, src/components, src/services, assets/fonts).
+2. Install the libraries listed above.
+3. Create theme.ts, types.ts, storage.ts, AppContext, haptics.ts, GradientBackground, GlassView.
+4. Create a temporary home screen that shows the text "Setup OK" in Satoshi and one GlassView pill (height 64, width 300) over the GradientBackground, so I can check the glass effect.
+5. Create NOTES.md.
+Then STOP and report.
