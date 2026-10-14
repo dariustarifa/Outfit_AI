@@ -86,7 +86,12 @@ export default function WardrobeScreen() {
   const openItem = useCallback((id?: string) => {
     void selection();
     if (id) router.push({ pathname: "/item", params: { id } });
-    else router.push("/item");
+    else {
+      router.push({
+        pathname: "/onboarding/wardrobe",
+        params: { from: "plus" },
+      } as never);
+    }
   }, []);
 
   const renderItem = useCallback(

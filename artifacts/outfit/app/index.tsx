@@ -128,7 +128,10 @@ export default function HomeScreen() {
 
   const addFirstItem = () => {
     void selection();
-    router.push("/item" as never);
+    router.push({
+      pathname: "/onboarding/wardrobe",
+      params: { from: "plus" },
+    } as never);
   };
 
   if (startupScreen === "loading") {

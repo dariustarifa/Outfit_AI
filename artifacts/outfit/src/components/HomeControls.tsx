@@ -470,7 +470,10 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                   testID="add-wardrobe-item-tab"
                   onPress={() => {
                     void tapLight();
-                    router.push("/item" as never);
+                    router.push({
+                      pathname: "/onboarding/wardrobe",
+                      params: { from: "plus" },
+                    } as never);
                   }}
                   style={styles.tabButton}
                 >

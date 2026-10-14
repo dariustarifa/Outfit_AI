@@ -10,26 +10,18 @@ import { tapLight } from "@/src/haptics";
 
 export default function IntroScreen() {
   const colors = useColors();
-  const { profile, setProfile } = useApp();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { profile } = useApp();
+  const [starting, setStarting] = useState(false);
 
-  const startWardrobe = async () => {
+  const startWardrobe = () => {
+    if (starting) return;
     if (!profile) {
       router.replace("/");
       return;
     }
-    setSaving(true);
-    setError("");
-    try {
-      await setProfile({ ...profile, onboardingCompleted: true });
-      void tapLight();
-      router.replace("/onboarding/wardrobe" as never);
-    } catch {
-      setError("No se pudo guardar tu perfil. Inténtalo de nuevo.");
-    } finally {
-      setSaving(false);
-    }
+    setStarting(true);
+    void tapLight();
+    router.replace("/onboarding/wardrobe" as never);
   };
 
   return (
@@ -53,8 +45,8 @@ export default function IntroScreen() {
           <Animated.View entering={FadeInDown.duration(250).delay(200)}>
             <Pressable
               accessibilityRole="button"
-              disabled={saving}
-              onPress={() => void startWardrobe()}
+              disabled={starting}
+              onPress={startWardrobe}
               style={({ pressed }) => [
                 styles.button,
                 { backgroundColor: colors.textPrimary },
@@ -62,15 +54,10 @@ export default function IntroScreen() {
               ]}
             >
               <Text style={[styles.buttonText, { color: colors.backgroundTop }]}>
-                {saving ? "Guardando…" : "Vamos"}
+                {starting ? "Abriendo…" : "Vamos"}
               </Text>
             </Pressable>
           </Animated.View>
-          {error ? (
-            <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-              {error}
-            </Text>
-          ) : null}
         </View>
       </SafeAreaView>
     </GradientBackground>
@@ -115,11 +102,5 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: "Satoshi_500Medium",
     fontSize: 17,
-  },
-  errorText: {
-    fontFamily: "Satoshi_400Regular",
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: 12,
   },
 });

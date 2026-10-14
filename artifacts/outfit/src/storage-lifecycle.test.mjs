@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createLocalStorage } from "./storage-core.ts";
 import { createWardrobeActions } from "./wardrobe-actions.ts";
+import { saveGallerySelection } from "./gallery-save.ts";
 
 function createTestEnvironment() {
   const values = new Map();
@@ -98,6 +99,30 @@ test("a captured photo is copied into app documents and remains readable after r
   assert.deepEqual(reloaded.wardrobe, [savedItem]);
   assert.equal(env.files.get(reloaded.wardrobe[0].imageUri), "captured-image-bytes");
   assert.equal((await env.fileSystem.getInfoAsync(reloaded.wardrobe[0].imageUri)).exists, true);
+});
+
+test("all 60 gallery photos remain saved and readable after reload", async () => {
+  const env = createTestEnvironment();
+  const assets = Array.from({ length: 60 }, (_, index) => {
+    const uri = `file:///picker/wardrobe-${index + 1}.jpg`;
+    env.setSourcePhoto(uri, `image-bytes-${index + 1}`);
+    return { uri };
+  });
+
+  const result = await saveGallerySelection(
+    assets,
+    (item) => env.actions.addItem(item),
+  );
+  assert.deepEqual(result, { added: 60, failed: 0 });
+
+  const reloaded = await env.reload();
+  assert.equal(reloaded.wardrobe.length, 60);
+  for (let index = 0; index < reloaded.wardrobe.length; index += 1) {
+    const item = reloaded.wardrobe[index];
+    assert.equal(item.note, "");
+    assert.equal(env.files.get(item.imageUri), `image-bytes-${index + 1}`);
+    assert.equal((await env.fileSystem.getInfoAsync(item.imageUri)).exists, true);
+  }
 });
 
 test("replacing a photo persists the new URI and removes the previous managed file", async () => {
