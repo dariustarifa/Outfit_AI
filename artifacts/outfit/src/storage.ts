@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
+import { Platform } from "react-native";
 import type {
   Profile,
   StoredAppData,
@@ -29,12 +30,16 @@ function isProfile(value: unknown): value is Profile {
 
   return (
     typeof value.name === "string" &&
+    (value.preferredName === undefined ||
+      typeof value.preferredName === "string") &&
     typeof value.age === "number" &&
     Number.isFinite(value.age) &&
     typeof value.heightCm === "number" &&
     Number.isFinite(value.heightCm) &&
     typeof value.bodyPhotoUri === "string" &&
     typeof value.city === "string" &&
+    (value.photoConsent === undefined ||
+      typeof value.photoConsent === "boolean") &&
     (!hasCoordinates || hasValidCoordinates) &&
     typeof value.onboardingCompleted === "boolean"
   );
@@ -77,6 +82,48 @@ function parseJson(raw: string | null, label: string): unknown {
   } catch (error) {
     throw new Error(`Saved ${label} data is not valid JSON.`, { cause: error });
   }
+}
+
+async function persistWebImage(sourceUri: string): Promise<string> {
+  const image = document.createElement("img");
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("The selected image could not be read."));
+  });
+  image.src = sourceUri;
+  await loaded;
+
+  const maxDimension = 1280;
+  const scale = Math.min(
+    1,
+    maxDimension / Math.max(image.naturalWidth, image.naturalHeight),
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Image compression is unavailable.");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) =>
+        result
+          ? resolve(result)
+          : reject(new Error("The selected image could not be compressed.")),
+      "image/jpeg",
+      0.78,
+    );
+  });
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("The selected image could not be saved."));
+    reader.onerror = () => reject(new Error("The selected image could not be saved."));
+    reader.readAsDataURL(blob);
+  });
 }
 
 export async function loadAppData(): Promise<StoredAppData> {
@@ -132,14 +179,19 @@ export async function saveWeatherSnapshot(
 }
 
 export async function copyImageToAppDocuments(sourceUri: string): Promise<string> {
-  const documentDirectory = FileSystem.documentDirectory;
-  if (!documentDirectory) {
-    throw new Error("The app document directory is unavailable.");
-  }
   if (!sourceUri.trim()) {
     throw new Error("An image URI is required.");
   }
 
+  if (Platform.OS === "web") {
+    if (sourceUri.startsWith("data:image/jpeg;base64,")) return sourceUri;
+    return persistWebImage(sourceUri);
+  }
+
+  const documentDirectory = FileSystem.documentDirectory;
+  if (!documentDirectory) {
+    throw new Error("The app document directory is unavailable.");
+  }
   const appPhotoDirectory = `${documentDirectory}${PHOTO_DIRECTORY_NAME}`;
   if (sourceUri.startsWith(appPhotoDirectory)) return sourceUri;
 

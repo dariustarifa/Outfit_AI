@@ -1,13 +1,36 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
 import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import { useColors } from "@/src/theme";
+import { useApp } from "@/src/context/AppContext";
 import { tapLight } from "@/src/haptics";
 
 export default function IntroScreen() {
   const colors = useColors();
+  const { profile, setProfile } = useApp();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const startWardrobe = async () => {
+    if (!profile) {
+      router.replace("/");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await setProfile({ ...profile, onboardingCompleted: true });
+      void tapLight();
+      router.replace("/onboarding/wardrobe" as never);
+    } catch {
+      setError("No se pudo guardar tu perfil. Inténtalo de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <GradientBackground style={styles.fill}>
@@ -18,22 +41,20 @@ export default function IntroScreen() {
               entering={FadeInDown.duration(250)}
               style={[styles.headline, { color: colors.textPrimary }]}
             >
-              Ahora sí empieza lo bueno
+              Ahora empieza la aventura
             </Animated.Text>
             <Animated.Text
               entering={FadeInDown.duration(250).delay(100)}
               style={[styles.subtitle, { color: colors.textSecondary }]}
             >
-              Empecemos a registrar tu armario
+              Registra tu armario
             </Animated.Text>
           </View>
           <Animated.View entering={FadeInDown.duration(250).delay(200)}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => {
-                void tapLight();
-                router.replace("/onboarding/wardrobe" as never);
-              }}
+              disabled={saving}
+              onPress={() => void startWardrobe()}
               style={({ pressed }) => [
                 styles.button,
                 { backgroundColor: colors.textPrimary },
@@ -41,10 +62,15 @@ export default function IntroScreen() {
               ]}
             >
               <Text style={[styles.buttonText, { color: colors.backgroundTop }]}>
-                Vamos
+                {saving ? "Guardando…" : "Vamos"}
               </Text>
             </Pressable>
           </Animated.View>
+          {error ? (
+            <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+              {error}
+            </Text>
+          ) : null}
         </View>
       </SafeAreaView>
     </GradientBackground>
@@ -89,5 +115,11 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: "Satoshi_500Medium",
     fontSize: 17,
+  },
+  errorText: {
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 12,
   },
 });

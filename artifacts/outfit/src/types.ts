@@ -1,11 +1,13 @@
 export interface Profile {
   name: string;
+  preferredName?: string;
   age: number;
   heightCm: number;
   bodyPhotoUri: string;
   city: string;
   latitude?: number;
   longitude?: number;
+  photoConsent?: boolean;
   onboardingCompleted: boolean;
 }
 

@@ -15,7 +15,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import { HomeControls } from "@/src/components/HomeControls";
-import OnboardingScreen from "@/src/components/OnboardingScreen";
+import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
 import { useColors } from "@/src/theme";
@@ -103,7 +103,8 @@ export default function HomeScreen() {
     setWeather,
   ]);
 
-  const displayName = profile?.name.trim() || "Tú";
+  const displayName =
+    profile?.preferredName?.trim() || profile?.name.trim() || "Tú";
   const timeAndWeather = weather
     ? `${formatClock(clockDate)} • ${Math.round(weather.temperatureC)}° ${weather.condition}`
     : formatClock(clockDate);
