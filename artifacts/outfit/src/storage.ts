@@ -19,6 +19,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isProfile(value: unknown): value is Profile {
   if (!isRecord(value)) return false;
 
+  const hasCoordinates =
+    value.latitude !== undefined || value.longitude !== undefined;
+  const hasValidCoordinates =
+    typeof value.latitude === "number" &&
+    Number.isFinite(value.latitude) &&
+    typeof value.longitude === "number" &&
+    Number.isFinite(value.longitude);
+
   return (
     typeof value.name === "string" &&
     typeof value.age === "number" &&
@@ -27,10 +35,7 @@ function isProfile(value: unknown): value is Profile {
     Number.isFinite(value.heightCm) &&
     typeof value.bodyPhotoUri === "string" &&
     typeof value.city === "string" &&
-    typeof value.latitude === "number" &&
-    Number.isFinite(value.latitude) &&
-    typeof value.longitude === "number" &&
-    Number.isFinite(value.longitude) &&
+    (!hasCoordinates || hasValidCoordinates) &&
     typeof value.onboardingCompleted === "boolean"
   );
 }

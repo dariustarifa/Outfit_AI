@@ -32,7 +32,7 @@ export interface AppContextValue extends StoredAppData {
   weather: WeatherSnapshot | null;
   loading: boolean;
   error: Error | null;
-  setProfile: (profile: Profile | null) => Promise<void>;
+  setProfile: (profile: Profile | null) => Promise<Profile | null>;
   addItem: (item: NewWardrobeItem) => Promise<WardrobeItem>;
   updateItem: (
     itemId: string,
@@ -130,6 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ) {
           await removeStoredImage(previousUri);
         }
+        return savedProfile;
       } catch (cause) {
         const nextError =
           cause instanceof Error ? cause : new Error("Could not save profile.");

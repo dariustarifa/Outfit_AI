@@ -4,8 +4,8 @@ export interface Profile {
   heightCm: number;
   bodyPhotoUri: string;
   city: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   onboardingCompleted: boolean;
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   AppState,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -8,12 +9,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { Redirect, router } from "expo-router";
+import { router } from "expo-router";
 import { Shirt } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import { HomeControls } from "@/src/components/HomeControls";
+import OnboardingScreen from "@/src/components/OnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
 import { useColors } from "@/src/theme";
@@ -63,7 +65,7 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !profile?.onboardingCompleted) return;
     let mounted = true;
     let requestInFlight = false;
     const latitude = profile?.latitude ?? MADRID_LATITUDE;
@@ -93,16 +95,32 @@ export default function HomeScreen() {
       appState.remove();
       clearInterval(interval);
     };
-  }, [loading, profile?.latitude, profile?.longitude, setWeather]);
+  }, [
+    loading,
+    profile?.latitude,
+    profile?.longitude,
+    profile?.onboardingCompleted,
+    setWeather,
+  ]);
 
   const displayName = profile?.name.trim() || "Tú";
   const timeAndWeather = weather
     ? `${formatClock(clockDate)} • ${Math.round(weather.temperatureC)}° ${weather.condition}`
     : formatClock(clockDate);
 
-  if (loading) return null;
-  if (!profile) return <Redirect href="/onboarding/profile" />;
-  if (!profile.onboardingCompleted) return <Redirect href="/onboarding/intro" />;
+  if (loading) {
+    return (
+      <GradientBackground style={styles.fill}>
+        <SafeAreaView style={[styles.fill, styles.loading]}>
+          <ActivityIndicator color={colors.textPrimary} />
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
+  if (!profile?.onboardingCompleted) {
+    return <OnboardingScreen />;
+  }
 
   return (
     <GradientBackground style={styles.fill}>
@@ -183,6 +201,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
+  },
+  loading: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   screen: {
     flex: 1,
