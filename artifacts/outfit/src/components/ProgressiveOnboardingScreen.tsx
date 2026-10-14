@@ -11,7 +11,14 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
+import Svg, { Circle, Path } from "react-native-svg";
 import * as ImagePicker from "expo-image-picker";
 import {
   ArrowLeft,
@@ -146,6 +153,13 @@ export default function ProgressiveOnboardingScreen() {
     ImagePicker.useCameraPermissions();
   const [mediaPermission, requestMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
+  const faceWiggle = useSharedValue(0);
+  const faceAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotateZ: `${faceWiggle.value * 6}deg` },
+      { scale: 1 + Math.abs(faceWiggle.value) * 0.04 },
+    ],
+  }));
 
   useEffect(() => {
     if (loading || initialized.current) return;
@@ -186,6 +200,15 @@ export default function ProgressiveOnboardingScreen() {
       controller.abort();
     };
   }, [form.city, selectedCity, step]);
+
+  useEffect(() => {
+    if (step !== 5) return;
+    faceWiggle.value = withSequence(
+      withTiming(-1, { duration: 140 }),
+      withTiming(1, { duration: 180 }),
+      withTiming(0, { duration: 180 }),
+    );
+  }, [faceWiggle, step]);
 
   const updateForm = (field: keyof ProfileForm, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -339,13 +362,14 @@ export default function ProgressiveOnboardingScreen() {
   };
 
   const suggested = suggestedName(form.name);
+  const canAdvance = !saving && (step !== 5 || form.photoConsent);
   const titles = [
     "Dinos cómo te llamas",
     "¿Cómo quieres que te llamemos?",
     "¿Qué edad tienes?",
     "¿Cuánto mides?",
     "¿En qué ciudad estás?",
-    "Ya casi está listo",
+    "¡Ya casi estamos!",
     "Elige tu foto",
   ] as const;
   const descriptions = [
@@ -356,7 +380,7 @@ export default function ProgressiveOnboardingScreen() {
     "Solo necesitamos tu edad para personalizar las recomendaciones.",
     "Usaremos tu estatura como referencia para tus looks.",
     "Elige tu ciudad para vincular tu zona horaria y el tiempo local.",
-    "Solo falta confirmar cómo usaremos tu imagen.",
+    "Solo queda un último paso.",
     "Una foto de cuerpo entero nos ayudará a recomendarte looks.",
   ] as const;
 
@@ -384,74 +408,137 @@ export default function ProgressiveOnboardingScreen() {
         behavior={Platform.OS === "web" ? undefined : "padding"}
         keyboardVerticalOffset={0}
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            {
-              paddingTop: contentTop,
-              paddingBottom: contentBottom,
-              paddingHorizontal: nativeLayout.screenHorizontalPadding,
-            },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.topBar}>
-            {step > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Volver al paso anterior"
-                onPress={goBack}
-                hitSlop={10}
-                style={styles.backButton}
-              >
-                <ArrowLeft size={21} color={colors.textPrimary} />
-              </Pressable>
-            ) : (
-              <View style={styles.backButton} />
-            )}
-            <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
-              TU PERFIL
-            </Text>
-            <View style={styles.backButton} />
-          </View>
+        <View style={styles.screen}>
+          <ScrollView
+            style={styles.fill}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: contentTop,
+                paddingBottom: nativeLayout.baseSpacing * 4,
+                paddingHorizontal: nativeLayout.screenHorizontalPadding,
+              },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={
+              Platform.OS === "ios" ? "interactive" : "on-drag"
+            }
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.topGroup}>
+              <View style={styles.topBar}>
+                {step > 0 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Volver al paso anterior"
+                    onPress={goBack}
+                    hitSlop={10}
+                    style={styles.backButton}
+                  >
+                    <ArrowLeft size={21} color={colors.textPrimary} />
+                  </Pressable>
+                ) : (
+                  <View style={styles.backButton} />
+                )}
+                <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
+                  TU PERFIL
+                </Text>
+                <View style={styles.backButton} />
+              </View>
 
-          <View
-            accessibilityLabel={`Paso ${step + 1} de ${STEP_COUNT}`}
-            accessibilityRole="progressbar"
-            style={styles.progressRow}
-          >
-            {Array.from({ length: STEP_COUNT }, (_, index) => (
               <View
-                key={index}
-                style={[
-                  styles.progressSegment,
-                  {
-                    backgroundColor:
-                      index <= step ? colors.primary : colors.border,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-          <Text style={[styles.stepCount, { color: colors.textSecondary }]}>
-            PASO {step + 1} DE {STEP_COUNT}
-          </Text>
-          <Animated.Text
-            key={`title-${step}`}
-            entering={FadeInDown.duration(250)}
-            style={[styles.title, { color: colors.textPrimary }]}
-          >
-            {titles[step]}
-          </Animated.Text>
-          <Animated.Text
-            key={`subtitle-${step}`}
-            entering={FadeInDown.duration(250).delay(80)}
-            style={[styles.subtitle, { color: colors.textSecondary }]}
-          >
-            {descriptions[step]}
-          </Animated.Text>
+                accessibilityLabel={`Paso ${step + 1} de ${STEP_COUNT}`}
+                accessibilityRole="progressbar"
+                style={styles.progressRow}
+              >
+                {Array.from({ length: STEP_COUNT }, (_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.progressSegment,
+                      {
+                        backgroundColor:
+                          index <= step ? colors.primary : colors.border,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={[styles.stepCount, { color: colors.textSecondary }]}>
+                PASO {step + 1} DE {STEP_COUNT}
+              </Text>
+            </View>
+
+            <View style={styles.stepContent}>
+              {step === 5 ? (
+                <Animated.View
+                  key="consent-face"
+                  entering={FadeInDown.duration(300)}
+                  style={styles.face}
+                >
+                  <Animated.View
+                    style={[styles.faceMotion, faceAnimatedStyle]}
+                  >
+                    <Svg width={68} height={68} viewBox="0 0 68 68">
+                      <Circle
+                        cx={34}
+                        cy={34}
+                        r={29}
+                        fill={colors.muted}
+                        stroke={colors.border}
+                        strokeWidth={1.2}
+                      />
+                      <Circle cx={23} cy={29} r={2} fill={colors.textPrimary} />
+                      <Circle cx={45} cy={29} r={2} fill={colors.textPrimary} />
+                      <Circle
+                        cx={19}
+                        cy={38}
+                        r={3}
+                        fill={colors.gold}
+                        opacity={0.28}
+                      />
+                      <Circle
+                        cx={49}
+                        cy={38}
+                        r={3}
+                        fill={colors.gold}
+                        opacity={0.28}
+                      />
+                      <Path
+                        d="M 23 39 C 27 47, 41 47, 45 39"
+                        fill="none"
+                        stroke={colors.textPrimary}
+                        strokeWidth={2.3}
+                        strokeLinecap="round"
+                      />
+                    </Svg>
+                  </Animated.View>
+                </Animated.View>
+              ) : null}
+              <View style={styles.headingGroup}>
+                <Animated.Text
+                  key={`title-${step}`}
+                  entering={FadeInDown.duration(250)}
+                  style={[
+                    styles.title,
+                    step === 5 && styles.consentTitle,
+                    { color: colors.textPrimary },
+                  ]}
+                >
+                  {titles[step]}
+                </Animated.Text>
+                <Animated.Text
+                  key={`subtitle-${step}`}
+                  entering={FadeInDown.duration(250).delay(80)}
+                  style={[
+                    styles.subtitle,
+                    step === 5 && styles.consentSubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {descriptions[step]}
+                </Animated.Text>
+              </View>
 
           <Animated.View
             key={`content-${step}`}
@@ -600,38 +687,48 @@ export default function ProgressiveOnboardingScreen() {
               ) : null}
 
               {step === 5 ? (
-                <Pressable
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: form.photoConsent }}
-                  onPress={() =>
-                    updateForm("photoConsent", !form.photoConsent)
-                  }
-                  style={styles.consentRow}
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      {
-                        borderColor: colors.textSecondary,
-                        backgroundColor: form.photoConsent
-                          ? colors.primary
-                          : "transparent",
-                      },
-                    ]}
+                <View>
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: form.photoConsent }}
+                    onPress={() =>
+                      updateForm("photoConsent", !form.photoConsent)
+                    }
+                    style={styles.consentRow}
                   >
-                    {form.photoConsent ? (
-                      <Check size={15} color={colors.primaryForeground} />
-                    ) : null}
-                  </View>
+                    <View
+                      style={[
+                        styles.checkbox,
+                        {
+                          borderColor: colors.textSecondary,
+                          backgroundColor: form.photoConsent
+                            ? colors.primary
+                            : "transparent",
+                        },
+                      ]}
+                    >
+                      {form.photoConsent ? (
+                        <Check size={15} color={colors.primaryForeground} />
+                      ) : null}
+                    </View>
+                    <Text
+                      style={[
+                        styles.consentText,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
+                      Acepto que Outfit use mi imagen para recomendarme looks.
+                    </Text>
+                  </Pressable>
                   <Text
                     style={[
-                      styles.consentText,
-                      { color: colors.textPrimary },
+                      styles.consentHint,
+                      { color: colors.textSecondary },
                     ]}
                   >
-                    Acepto que Outfit use mi imagen para recomendarme looks.
+                    Es imprescindible para continuar.
                   </Text>
-                </Pressable>
+                </View>
               ) : null}
 
               {step === 6 ? (
@@ -749,34 +846,48 @@ export default function ProgressiveOnboardingScreen() {
             </Text>
           ) : null}
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={saving}
-            onPress={() => void saveStep()}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              { backgroundColor: colors.primary },
-              saving && styles.disabledButton,
-              pressed && !saving && styles.pressed,
+            </View>
+          </ScrollView>
+          <View
+            style={[
+              styles.footer,
+              {
+                paddingHorizontal: nativeLayout.screenHorizontalPadding,
+                paddingTop: nativeLayout.baseSpacing * 3,
+                paddingBottom: contentBottom,
+              },
             ]}
           >
-            <Text
-              style={[
-                styles.primaryButtonText,
-                { color: colors.primaryForeground },
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canAdvance }}
+              disabled={!canAdvance}
+              onPress={() => void saveStep()}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { backgroundColor: colors.primary },
+                !canAdvance && styles.disabledButton,
+                pressed && canAdvance && styles.pressed,
               ]}
             >
-              {saving
-                ? "Guardando…"
-                : step === 6
-                  ? "Guardar y continuar"
-                  : "Continuar"}
-            </Text>
-            {step < STEP_COUNT - 1 ? (
-              <ArrowRight size={18} color={colors.primaryForeground} />
-            ) : null}
-          </Pressable>
-        </ScrollView>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: colors.primaryForeground },
+                ]}
+              >
+                {saving
+                  ? "Guardando…"
+                  : step === 6
+                    ? "Guardar y continuar"
+                    : "Continuar"}
+              </Text>
+              {step < STEP_COUNT - 1 ? (
+                <ArrowRight size={18} color={colors.primaryForeground} />
+              ) : null}
+            </Pressable>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </GradientBackground>
   );
@@ -838,7 +949,18 @@ function FormField({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
+  screen: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  topGroup: { flexShrink: 0 },
+  stepContent: {
+    flexGrow: 1,
+    justifyContent: "space-evenly",
+  },
+  footer: {
+    flexShrink: 0,
+  },
   topBar: {
     minHeight: nativeLayout.primaryButtonHeight,
     flexDirection: "row",
@@ -878,12 +1000,35 @@ const styles = StyleSheet.create({
     lineHeight: 42,
     marginTop: nativeLayout.baseSpacing * 4,
   },
+  headingGroup: {
+    flexShrink: 0,
+  },
   subtitle: {
     fontFamily: "Satoshi_400Regular",
     fontSize: 15,
     lineHeight: 22,
     marginTop: nativeLayout.baseSpacing * 2,
     marginBottom: nativeLayout.baseSpacing * 6,
+  },
+  consentTitle: {
+    textAlign: "center",
+    marginTop: nativeLayout.baseSpacing * 2,
+  },
+  consentSubtitle: {
+    textAlign: "center",
+    marginBottom: nativeLayout.baseSpacing * 5,
+  },
+  face: {
+    width: 68,
+    height: 68,
+    alignSelf: "center",
+    marginTop: nativeLayout.baseSpacing * 3,
+  },
+  faceMotion: {
+    width: 68,
+    height: 68,
+    alignItems: "center",
+    justifyContent: "center",
   },
   formCard: { minHeight: 150 },
   formContent: {
@@ -948,9 +1093,16 @@ const styles = StyleSheet.create({
   },
   consentText: {
     flex: 1,
-    fontFamily: "Satoshi_400Regular",
+    fontFamily: "Satoshi_500Medium",
     fontSize: 15,
     lineHeight: 22,
+  },
+  consentHint: {
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: nativeLayout.baseSpacing * 2,
+    marginLeft: nativeLayout.baseSpacing * 9,
   },
   privacyLink: {
     alignSelf: "flex-start",
@@ -1029,7 +1181,7 @@ const styles = StyleSheet.create({
     minHeight: nativeLayout.primaryButtonHeight,
     borderRadius: nativeLayout.pillRadius,
     paddingHorizontal: nativeLayout.baseSpacing * 5,
-    marginTop: nativeLayout.baseSpacing * 6,
+    marginTop: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1039,6 +1191,6 @@ const styles = StyleSheet.create({
     fontFamily: "Satoshi_700Bold",
     fontSize: 15,
   },
-  disabledButton: { opacity: 0.6 },
+  disabledButton: { opacity: 0.4 },
   pressed: { transform: [{ scale: 0.97 }] },
 });
