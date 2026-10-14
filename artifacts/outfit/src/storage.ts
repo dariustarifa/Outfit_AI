@@ -1,9 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
-import type { Profile, StoredAppData, WardrobeItem } from "./types";
+import type {
+  Profile,
+  StoredAppData,
+  WardrobeItem,
+  WeatherSnapshot,
+} from "./types";
 
 const PROFILE_KEY = "outfit:profile:v1";
 const WARDROBE_KEY = "outfit:wardrobe:v1";
+const WEATHER_KEY = "outfit:weather:v1";
 const PHOTO_DIRECTORY_NAME = "outfit/wardrobe/";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -38,6 +44,23 @@ function isWardrobeItem(value: unknown): value is WardrobeItem {
     typeof value.note === "string" &&
     typeof value.createdAt === "number" &&
     Number.isFinite(value.createdAt)
+  );
+}
+
+function isWeatherSnapshot(value: unknown): value is WeatherSnapshot {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.temperatureC === "number" &&
+    Number.isFinite(value.temperatureC) &&
+    typeof value.condition === "string" &&
+    typeof value.updatedAt === "number" &&
+    Number.isFinite(value.updatedAt) &&
+    typeof value.minTemperatureC === "number" &&
+    Number.isFinite(value.minTemperatureC) &&
+    typeof value.maxTemperatureC === "number" &&
+    Number.isFinite(value.maxTemperatureC) &&
+    typeof value.precipitationProbability === "number" &&
+    Number.isFinite(value.precipitationProbability)
   );
 }
 
@@ -82,6 +105,25 @@ export async function saveAppData(data: StoredAppData): Promise<void> {
     [PROFILE_KEY, JSON.stringify(data.profile)],
     [WARDROBE_KEY, JSON.stringify(data.wardrobe)],
   ]);
+}
+
+export async function loadWeatherSnapshot(): Promise<WeatherSnapshot | null> {
+  const parsed = parseJson(await AsyncStorage.getItem(WEATHER_KEY), "weather");
+  if (parsed === null) return null;
+  if (!isWeatherSnapshot(parsed)) {
+    throw new Error("Saved weather data does not match the current app format.");
+  }
+  return parsed;
+}
+
+export async function saveWeatherSnapshot(
+  weather: WeatherSnapshot | null,
+): Promise<void> {
+  if (weather === null) {
+    await AsyncStorage.removeItem(WEATHER_KEY);
+    return;
+  }
+  await AsyncStorage.setItem(WEATHER_KEY, JSON.stringify(weather));
 }
 
 export async function copyImageToAppDocuments(sourceUri: string): Promise<string> {

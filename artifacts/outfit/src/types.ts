@@ -20,6 +20,9 @@ export interface WeatherSnapshot {
   temperatureC: number;
   condition: string;
   updatedAt: number;
+  minTemperatureC: number;
+  maxTemperatureC: number;
+  precipitationProbability: number;
 }
 
 export interface StoredAppData {

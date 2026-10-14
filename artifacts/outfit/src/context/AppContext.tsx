@@ -11,8 +11,10 @@ import {
 import {
   copyImageToAppDocuments,
   loadAppData,
+  loadWeatherSnapshot,
   removeStoredImage,
   saveAppData,
+  saveWeatherSnapshot,
 } from "../storage";
 import type {
   Profile,
@@ -37,7 +39,7 @@ export interface AppContextValue extends StoredAppData {
     updates: Partial<Pick<WardrobeItem, "imageUri" | "note">>,
   ) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
-  setWeather: (weather: WeatherSnapshot | null) => void;
+  setWeather: (weather: WeatherSnapshot | null) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -73,6 +75,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (mounted) setLoading(false);
       });
 
+    loadWeatherSnapshot()
+      .then((stored) => {
+        if (mounted) setWeather(stored);
+      })
+      .catch((cause: unknown) => {
+        if (mounted) {
+          setError(
+            cause instanceof Error
+              ? cause
+              : new Error("Could not load saved weather."),
+          );
+        }
+      });
+
     return () => {
       mounted = false;
     };
@@ -85,6 +101,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWardrobeState(next.wardrobe);
     setError(null);
   }, []);
+
+  const persistWeather = useCallback(
+    async (nextWeather: WeatherSnapshot | null) => {
+      await saveWeatherSnapshot(nextWeather);
+      setWeather(nextWeather);
+    },
+    [],
+  );
 
   const setProfile = useCallback(
     async (nextProfile: Profile | null) => {
@@ -211,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addItem,
       updateItem,
       removeItem,
-      setWeather,
+      setWeather: persistWeather,
     }),
     [
       profile,
@@ -223,6 +247,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addItem,
       updateItem,
       removeItem,
+      persistWeather,
     ],
   );
 

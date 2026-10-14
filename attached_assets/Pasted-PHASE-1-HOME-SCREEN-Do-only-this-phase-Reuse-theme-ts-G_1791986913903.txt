@@ -1,0 +1,47 @@
+PHASE 1 — HOME SCREEN. Do only this phase. Reuse theme.ts, GradientBackground, GlassView and haptics.ts. Do not create new colors. The attached screenshot is the visual reference; the text below is the exact spec.
+
+LAYOUT (top to bottom, respect safe areas)
+1. Date text: for example "MIÉRCOLES, 14 DE OCTUBRE". Build it with toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }) and convert to uppercase. Satoshi Medium 15, letterSpacing 0.5, color textSecondary. Place it about 90pt below the top safe area.
+2. Greeting, two lines: "Hola," and then the user's name. Melodrama Medium, size 96, lineHeight 100, color textPrimary. 12pt below the date. The name line must use adjustsFontSizeToFit with numberOfLines 1 and minimumFontScale 0.5, so long names shrink instead of breaking.
+3. Info line 16pt below the greeting: "09:41 • 22° Despejado" (example). Satoshi Medium 17, color textSecondary.
+4. Flexible empty space.
+5. Plan button: GlassView pill, height 64, 20pt horizontal margin. Centered text "¿Cuál es el plan de hoy?" Satoshi Medium 18, color textPrimary, followed by an ArrowRight icon in gold (size 20). Placed 24pt above the tab bar.
+6. Tab bar: floating GlassView pill at the bottom. Height 70, width = screen width minus 88, centered, bottom = safe area bottom + 8. Three icons evenly spaced: Home, Plus, User (lucide, size 26, strokeWidth 1.5).
+   - Active tab: icon color gold, with a circular GlassView highlight (56pt) behind it.
+   - Inactive icons AND the Plus icon: color iconInactive. Plus is a button, never an active tab.
+   - The highlight slides between Home and User with a spring animation.
+   - Each press: tapLight().
+   - Home tab shows this screen. User tab goes to a placeholder profile screen with the text "Perfil". Plus does nothing yet (only the haptic).
+
+TIME
+- Use the device clock, 24-hour format "HH:mm" (Intl "es-ES", hour12 false).
+- Update exactly at the start of every minute.
+
+WEATHER (src/services/weather.ts)
+- Use the profile latitude/longitude. If the profile does not exist yet, use latitude 40.4168, longitude -3.7038 (temporary).
+- Request: https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto
+- Show Math.round(current.temperature_2m) + "° " + a Spanish label from weather_code:
+  0 "Despejado"; 1,2 "Poco nuboso"; 3 "Nublado"; 45,48 "Niebla"; 51-57 "Llovizna"; 61-67 "Lluvia"; 71-77 "Nieve"; 80-82 "Chubascos"; 95-99 "Tormenta".
+- Refresh when the app returns to the foreground and every 30 minutes.
+- Save the last result in AsyncStorage. If the request fails, show the saved result. If nothing is saved, show only the time.
+- Keep daily min, max and rain probability in AppContext (needed later).
+
+PLAN BUTTON -> INPUT (morph animation)
+- On press: tapLight(). The glass pill grows with a spring animation (it must NOT jump) into an input panel anchored above the keyboard. The tab bar slides down and fades out while the panel is open. The background behind gets a very light dim (rgba(0,0,0,0.12)).
+- The panel is still a GlassView and contains:
+  a) A row of attachment thumbnails (56pt, radius 12, small "x" to remove). Hidden when empty.
+  b) A multiline TextInput, autofocus, placeholder "Escribe tu petición…", Satoshi Regular 17, min height 56, max height 140.
+  c) Bottom row: on the left a Paperclip icon button that opens an action sheet with "Hacer foto", "Elegir de la galería", "Elegir archivo", "Cancelar" (use camera, image picker and document picker). On the right a send button: a gold circle (44pt) with an ArrowUp icon, disabled (opacity 0.4) until there is text or at least one attachment.
+- Close the panel by tapping the dimmed background or by dismissing the keyboard while the input is empty. It collapses back into the pill with a spring animation and the tab bar comes back.
+- On send: success() haptic, clear and collapse the panel, then call a function onSubmitPlan({ text, attachments }) that for now only does console.log and shows a small toast "Enviado".
+- Use KeyboardAvoidingView (behavior "padding" on iOS). Correct behavior is more important than fancy animation.
+
+ENTRY ANIMATION
+- The two greeting lines fade in and slide up, one after the other (80 ms apart). The plan button and tab bar fade in last.
+
+DONE WHEN
+- Date, greeting, real time and real weather are shown.
+- Glass is visible: the colored blobs can be seen through the tab bar and the plan button.
+- Long names like "Maximiliano" shrink and fit.
+- The plan button morphs into the input and back.
+- Haptics fire on tab presses and when opening the input.
