@@ -16,17 +16,14 @@ import {
   saveAppData,
   saveWeatherSnapshot,
 } from "../storage";
+import { createWardrobeActions } from "../wardrobe-actions";
 import type {
   Profile,
   StoredAppData,
   WardrobeItem,
   WeatherSnapshot,
 } from "../types";
-
-export interface NewWardrobeItem {
-  imageUri: string;
-  note: string;
-}
+import type { NewWardrobeItem } from "../wardrobe-actions";
 
 export interface AppContextValue extends StoredAppData {
   weather: WeatherSnapshot | null;
@@ -141,89 +138,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
-  const addItem = useCallback(
-    async (item: NewWardrobeItem) => {
-      try {
-        const savedItem: WardrobeItem = {
-          id: `${Date.now().toString(36)}-${Math.random()
-            .toString(36)
-            .slice(2, 10)}`,
-          imageUri: await copyImageToAppDocuments(item.imageUri),
-          note: item.note,
-          createdAt: Date.now(),
-        };
-        const nextWardrobe = [...currentData.current.wardrobe, savedItem];
-        await commit({ ...currentData.current, wardrobe: nextWardrobe });
-        return savedItem;
-      } catch (cause) {
-        const nextError =
-          cause instanceof Error ? cause : new Error("Could not save wardrobe item.");
-        setError(nextError);
-        throw nextError;
-      }
-    },
+  const wardrobeActions = useMemo(
+    () =>
+      createWardrobeActions({
+        getData: () => currentData.current,
+        commit,
+        copyImageToAppDocuments,
+        removeStoredImage,
+        onError: setError,
+      }),
     [commit],
   );
-
-  const updateItem = useCallback(
-    async (
-      itemId: string,
-      updates: Partial<Pick<WardrobeItem, "imageUri" | "note">>,
-    ) => {
-      try {
-        const previousItem = currentData.current.wardrobe.find(
-          (item) => item.id === itemId,
-        );
-        if (!previousItem) throw new Error("Wardrobe item was not found.");
-
-        const nextImageUri =
-          updates.imageUri && updates.imageUri !== previousItem.imageUri
-            ? await copyImageToAppDocuments(updates.imageUri)
-            : previousItem.imageUri;
-        const updatedItem: WardrobeItem = {
-          ...previousItem,
-          note: updates.note ?? previousItem.note,
-          imageUri: nextImageUri,
-        };
-        const nextWardrobe = currentData.current.wardrobe.map((item) =>
-          item.id === itemId ? updatedItem : item,
-        );
-        await commit({ ...currentData.current, wardrobe: nextWardrobe });
-        if (nextImageUri !== previousItem.imageUri) {
-          await removeStoredImage(previousItem.imageUri);
-        }
-      } catch (cause) {
-        const nextError =
-          cause instanceof Error ? cause : new Error("Could not update wardrobe item.");
-        setError(nextError);
-        throw nextError;
-      }
-    },
-    [commit],
-  );
-
-  const removeItem = useCallback(
-    async (itemId: string) => {
-      try {
-        const previousItem = currentData.current.wardrobe.find(
-          (item) => item.id === itemId,
-        );
-        if (!previousItem) return;
-
-        const nextWardrobe = currentData.current.wardrobe.filter(
-          (item) => item.id !== itemId,
-        );
-        await commit({ ...currentData.current, wardrobe: nextWardrobe });
-        await removeStoredImage(previousItem.imageUri);
-      } catch (cause) {
-        const nextError =
-          cause instanceof Error ? cause : new Error("Could not remove wardrobe item.");
-        setError(nextError);
-        throw nextError;
-      }
-    },
-    [commit],
-  );
+  const { addItem, updateItem, removeItem } = wardrobeActions;
 
   const value = useMemo(
     () => ({
