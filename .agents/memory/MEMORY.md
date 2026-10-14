@@ -1,0 +1,1 @@
+- [Expo font-gated preview](expo-font-preview.md) — Replit's Expo web capture may run before local fonts finish loading; verify the delayed render without weakening the gate.

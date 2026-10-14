@@ -73,5 +73,6 @@ Keep the colored background behind it; the translucency depends on that color.
 
 The source provides foundations and a single screen composition, not a reusable
 Figma component library. The web component browser therefore keeps the scaffold's
-general-purpose component families, themed with Outfit's tokens. Keep app-specific
-data, navigation, and screen composition in the consuming app.
+general-purpose component families, themed with Outfit's tokens. The native
+package provides the brief's reusable gradient and clear-glass primitives. Keep
+app-specific data, navigation, and screen composition in the consuming app.

@@ -14,21 +14,22 @@ file before deleting anything.
 - Rewrite color/theme imports to
   `@workspace/outfit-design-system/lib/native-theme` and
   `@workspace/outfit-design-system/hooks/use-colors`.
-- Rewrite the root layout to use
-  `@workspace/outfit-design-system/hooks/use-fonts` while preserving its
-  SplashScreen gating.
+- Keep font loading in the Expo app because the OTF files must be bundled from
+  its own `assets/fonts/` directory. Replace scaffold fonts with the required
+  Outfit fonts and preserve SplashScreen gating.
 - Delete app-local `constants/colors.ts` and `hooks/useColors.ts` after every
   import points at this package. Do not leave compatibility re-exports.
-- Remove local palette interfaces, token mappings, font registrations, and
-  color-scheme logic now supplied by this package.
+- Remove local palette interfaces, token mappings, and color-scheme logic now
+  supplied by this package. Keep only the app-local font registration that loads
+  files from its own assets directory.
 
 ## Replace product-agnostic UI
 
 Inventory inline and app-local styled controls before migrating screens.
 
-- Replace product-agnostic Buttons, typography, Inputs, Textareas, Fields,
-  Cards, Badges, Toggles, Empty states, Spinners, and Skeletons with package
-  native components.
+- Replace local `GradientBackground` and `GlassView` implementations with the
+  package native components. Add more shared native families only when this
+  project needs them.
 - Keep domain-specific compositions local, but rewrite their internals to
   compose package primitives.
 - Delete app-local product-agnostic components after all imports are rewritten.
@@ -45,6 +46,6 @@ Inventory inline and app-local styled controls before migrating screens.
 - Run Expo typecheck and the development workflow; verify the native theme,
   fonts, and one package primitive before presenting the app.
 
-Migration is complete when Expo imports every shared visual primitive, theme,
-and hook directly from `@workspace/outfit-design-system` and retains only
-product-specific UI compositions locally.
+Migration is complete when Expo imports the native theme, color hook, and shared
+background/glass primitives directly from `@workspace/outfit-design-system`,
+and retains only product-specific state and UI compositions locally.

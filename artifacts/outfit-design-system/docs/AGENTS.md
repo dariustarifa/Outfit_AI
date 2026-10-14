@@ -18,6 +18,10 @@ on it and import its theme and components directly.
   `./components/*`. Generated systems keep and theme it; Figma imports prune and
   restyle it; code imports replace it with the source component library.
 - `src/lib/` (`cn`) and `src/hooks/` — exported as `./lib/*` and `./hooks/*`.
+- `src/lib/native-theme.tsx`, `src/hooks/use-colors.tsx`, and
+  `src/components/native/` — portable native theme, system color-scheme hook,
+  and Expo-ready background/glass primitives. Expo consumers import these
+  directly; keep only domain state and compositions in the app.
 - `src/App.tsx` — the entry point for the living style guide.
 - `src/preview/DesignSystemBrowser.tsx` — the persistent grouped navigation,
   branded header, search, deep links, and active page shell.
@@ -145,6 +149,9 @@ the import resolves and the primitive uses this design system's theme.
   consuming app.
 - Read `SKILL.md` before applying Outfit styling. Preserve its Spanish-language,
   typography, background, glass, button, and motion rules.
+- For Expo, import `nativeTheme`, `useColors`, `GradientBackground`, and
+  `GlassView` from this package. App-local theme files may only re-export those
+  APIs; never create a second palette or component implementation.
 - Keep product data, navigation, application state, and product-specific
   compositions in the app. Product-agnostic visual primitives belong here.
 - Read these docs in place. Do not copy them into another artifact.

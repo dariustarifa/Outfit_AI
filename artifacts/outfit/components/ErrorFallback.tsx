@@ -1,0 +1,303 @@
+import React, { useState } from 'react';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColors } from '@workspace/outfit-design-system/hooks/use-colors';
+import { reloadAppAsync } from 'expo';
+import {
+  CircleAlert as CircleAlertIcon,
+  X as XIcon,
+} from 'lucide-react-native';
+
+export type ErrorFallbackProps = {
+  error: Error;
+  resetError: () => void;
+};
+
+export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const handleRestart = async () => {
+    try {
+      await reloadAppAsync();
+    } catch (restartError) {
+      console.error('Failed to restart app:', restartError);
+      resetError();
+    }
+  };
+
+  const formatErrorDetails = (): string => {
+    let details = `Error: ${error.message}\n\n`;
+    if (error.stack) {
+      details += `Traza de pila:\n${error.stack}`;
+    }
+    return details;
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {__DEV__ ? (
+        <Pressable
+          onPress={() => setIsModalVisible(true)}
+          testID="open-error-details"
+          accessibilityLabel="Ver detalles del error"
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.topButton,
+            {
+              top: insets.top + 16,
+              backgroundColor: colors.card,
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
+          <CircleAlertIcon size={20} color={colors.foreground} />
+        </Pressable>
+      ) : null}
+
+      <View style={styles.content}>
+          <Text
+            style={[
+              styles.title,
+              {
+                color: colors.foreground,
+                fontFamily: 'Satoshi_700Bold',
+              },
+            ]}
+          >
+          Algo ha ido mal
+        </Text>
+
+        <Text
+          style={[
+            styles.message,
+            {
+              color: colors.mutedForeground,
+              fontFamily: 'Satoshi_400Regular',
+            },
+          ]}
+        >
+          Recarga la app para continuar.
+        </Text>
+
+        <Pressable
+          onPress={handleRestart}
+          testID="restart-app"
+          style={({ pressed }) => [
+            styles.button,
+            {
+              backgroundColor: colors.primary,
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.buttonText,
+              {
+                color: colors.primaryForeground,
+                fontFamily: 'Satoshi_500Medium',
+              },
+            ]}
+          >
+            Reintentar
+          </Text>
+        </Pressable>
+      </View>
+
+      {__DEV__ ? (
+        <Modal
+          visible={isModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.modalContainer,
+                { backgroundColor: colors.background },
+              ]}
+            >
+              <View
+                style={[
+                  styles.modalHeader,
+                  { borderBottomColor: colors.border },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modalTitle,
+                    {
+                      color: colors.foreground,
+                      fontFamily: 'Satoshi_500Medium',
+                    },
+                  ]}
+                >
+                  Detalles del error
+                </Text>
+                <Pressable
+                  onPress={() => setIsModalVisible(false)}
+                  testID="close-error-details"
+                  accessibilityLabel="Cerrar detalles del error"
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.closeButton,
+                    { opacity: pressed ? 0.6 : 1 },
+                  ]}
+                >
+                  <XIcon size={24} color={colors.foreground} />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                style={styles.modalScrollView}
+                contentContainerStyle={[
+                  styles.modalScrollContent,
+                  { paddingBottom: insets.bottom + 16 },
+                ]}
+                showsVerticalScrollIndicator
+              >
+                <View
+                  style={[
+                    styles.errorContainer,
+                    { backgroundColor: colors.card },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.errorText,
+                      {
+                        color: colors.foreground,
+                        fontFamily: 'Satoshi_400Regular',
+                      },
+                    ]}
+                    selectable
+                  >
+                    {formatErrorDetails()}
+                  </Text>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  content: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    width: '100%',
+    maxWidth: 600,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 40,
+  },
+  message: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  topButton: {
+    position: 'absolute',
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  button: {
+    paddingVertical: 16,
+    borderRadius: 8,
+    paddingHorizontal: 24,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonText: {
+    fontWeight: '600',
+    textAlign: 'center',
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    width: '100%',
+    height: '90%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalScrollView: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    padding: 16,
+  },
+  errorContainer: {
+    width: '100%',
+    borderRadius: 8,
+    overflow: 'hidden',
+    padding: 16,
+  },
+  errorText: {
+    fontSize: 12,
+    lineHeight: 18,
+    width: '100%',
+  },
+});

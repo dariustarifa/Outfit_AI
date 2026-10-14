@@ -9,18 +9,18 @@ UI.
 
 ## Native theme and fonts
 
-Import the portable tokens in the Expo app. A local `src/theme.ts` may re-export
-them as a convenience, but must not duplicate or redefine their values:
+Import the native theme and color hook directly from the package. A local
+`src/theme.ts` may re-export them as a convenience, but must not duplicate or
+redefine their values:
 
 ```tsx
-import { tokens } from "@workspace/outfit-design-system/tokens";
-
-export const theme = tokens;
+export { nativeTheme as theme } from "@workspace/outfit-design-system/lib/native-theme";
+export { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 ```
 
-Use `theme.color.light` and `theme.color.dark` in native styles. Convert the
-`radius` and `spacing` strings to React Native numbers at the app boundary.
-Do not hardcode duplicate hex values in the consuming app.
+Use `useColors()` for the active light/dark palette. `nativeTheme` also exports
+the source-derived spacing, screen padding, card and pill radii, glass layers,
+and button dimensions. Do not hardcode duplicate hex values in the consuming app.
 
 The font source files are retained in
 `artifacts/outfit-design-system/docs/references/fonts/`. Copy the required files
@@ -31,12 +31,17 @@ reserve Melodrama Medium for large headlines.
 
 ## Native components
 
-The current package provides portable tokens and a themed web component
-library; it does not ship native React Native components. Keep product data,
-navigation, and screen composition in Expo. Implement the app-specific
-`GradientBackground` and `GlassView` there from `SKILL.md`. Only move a
-product-agnostic native family into this package when more than one consumer
-needs it.
+Import the shared mobile primitives directly:
+
+```tsx
+import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
+import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
+```
+
+Keep product data, navigation, and screen composition in Expo. Metro resolves
+the workspace package through pnpm symlinks. Do not copy source or token values.
+Loose binary assets may still need copying into Expo because Metro does not
+watch sibling artifact folders by default.
 
 ## Dependencies and assets
 
@@ -49,6 +54,5 @@ Set `app.json`'s literal `splash.backgroundColor` from
 
 ## Verify
 
-Import the package tokens and render one native element using a token value;
-then run Expo typecheck and the development workflow before building the wider
-screen flow.
+Render `GradientBackground` and `GlassView` from the package, then run Expo
+typecheck and the development workflow before building the wider screen flow.
