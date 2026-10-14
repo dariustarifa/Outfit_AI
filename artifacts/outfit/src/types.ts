@@ -11,6 +11,20 @@ export interface Profile {
   onboardingCompleted: boolean;
 }
 
+export type ProfileUpdate = Partial<
+  Pick<
+    Profile,
+    | "name"
+    | "preferredName"
+    | "age"
+    | "heightCm"
+    | "bodyPhotoUri"
+    | "city"
+    | "latitude"
+    | "longitude"
+  >
+>;
+
 export interface WardrobeItem {
   id: string;
   imageUri: string;

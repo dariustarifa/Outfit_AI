@@ -19,17 +19,20 @@ import {
 import { createWardrobeActions } from "../wardrobe-actions";
 import type {
   Profile,
+  ProfileUpdate,
   StoredAppData,
   WardrobeItem,
   WeatherSnapshot,
 } from "../types";
 import type { NewWardrobeItem } from "../wardrobe-actions";
+import { mergeProfileUpdate } from "../profile-update";
 
 export interface AppContextValue extends StoredAppData {
   weather: WeatherSnapshot | null;
   loading: boolean;
   error: Error | null;
   setProfile: (profile: Profile | null) => Promise<Profile | null>;
+  updateProfile: (updates: ProfileUpdate) => Promise<Profile>;
   addItem: (item: NewWardrobeItem) => Promise<WardrobeItem>;
   updateItem: (
     itemId: string,
@@ -138,6 +141,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const updateProfile = useCallback(
+    async (updates: ProfileUpdate) => {
+      const existing = currentData.current.profile;
+      if (!existing) {
+        throw new Error("Cannot update a profile that has not been created.");
+      }
+
+      const saved = await setProfile(mergeProfileUpdate(existing, updates));
+      if (!saved) throw new Error("Could not save profile.");
+      return saved;
+    },
+    [setProfile],
+  );
+
   const wardrobeActions = useMemo(
     () =>
       createWardrobeActions({
@@ -159,6 +176,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       setProfile,
+      updateProfile,
       addItem,
       updateItem,
       removeItem,
@@ -171,6 +189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       setProfile,
+      updateProfile,
       addItem,
       updateItem,
       removeItem,

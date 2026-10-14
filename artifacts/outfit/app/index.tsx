@@ -18,6 +18,7 @@ import { GlassView } from "@workspace/outfit-design-system/components/native/gla
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { HomeControls } from "@/src/components/HomeControls";
+import { ProfileEditor } from "@/src/components/ProfileEditor";
 import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
@@ -341,11 +342,7 @@ export default function HomeScreen() {
                 </Animated.View>
               </ScrollView>
             ) : (
-              <View style={styles.profileContent}>
-                <Text style={[styles.profileTitle, { color: colors.textPrimary }]}>
-                  Perfil
-                </Text>
-              </View>
+              <ProfileEditor />
             )}
             <HomeControls screen={screen} onScreenChange={setScreen} />
           </View>
@@ -537,16 +534,6 @@ const styles = StyleSheet.create({
   textActionText: {
     fontFamily: "Satoshi_500Medium",
     fontSize: 13,
-  },
-  profileContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 120,
-  },
-  profileTitle: {
-    fontFamily: "Satoshi_500Medium",
-    fontSize: 24,
   },
   loadingContent: {
     flex: 1,
