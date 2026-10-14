@@ -1,0 +1,19 @@
+kind = "design-system"
+previewPath = "/outfit-design-system/"
+title = "Outfit Design System"
+description = "A shared visual language and component library for Outfit, a Spanish-language personal styling app that recommends wardrobe looks around the user's plans and local weather."
+version = "1.0.0"
+id = "artifacts/outfit-design-system"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/outfit-design-system/" ]
+localPort = 24872
+
+[services.development]
+run = "pnpm --filter @workspace/outfit-design-system run dev"
+
+[services.env]
+PORT = "24872"
+BASE_PATH = "/outfit-design-system/"
