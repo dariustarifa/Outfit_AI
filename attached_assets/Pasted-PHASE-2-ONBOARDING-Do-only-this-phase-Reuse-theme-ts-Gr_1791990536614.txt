@@ -1,0 +1,29 @@
+PHASE 2 — ONBOARDING. Do only this phase. Reuse theme.ts, GradientBackground, GlassView, haptics.ts, AppContext. Do not change the home screen except the redirect logic.
+
+SCREEN A: app/onboarding/profile.tsx
+- Background: GradientBackground. Headline "Cuéntanos sobre ti" in Melodrama Medium 40.
+- Fields (Satoshi, label above each, input height 56, radius 16, background rgba(255,255,255,0.5), border glassBorder):
+  1. "Nombre" (text, required)
+  2. "Edad" (number, required, valid range 14 to 99; otherwise show the error "Debes tener al menos 14 años")
+  3. "Estatura (cm)" (number, required, range 100 to 230)
+  4. "Ciudad" (see city search below)
+  5. "Foto de cuerpo entero": two buttons "Hacer foto" and "Elegir de la galería". After picking, show a preview (3:4 ratio, radius 24) and a small button "Cambiar foto". Hint text: "De pie, cuerpo entero y con buena luz."
+  6. Checkbox: "Acepto que la app use mis fotos y datos para recomendarme looks." with a link "Política de privacidad" that opens a placeholder screen saying "Próximamente".
+- City search: when the user types 2 or more characters, wait 400 ms, then request
+  https://geocoding-api.open-meteo.com/v1/search?name={query}&count=5&language=es&format=json
+  Show up to 5 results as a list, each as "{name}, {admin1}, {country}". The user MUST tap one. Save its latitude and longitude. If there are no results, show "No encontramos esa ciudad".
+- If camera permission is denied, show "Necesitamos acceso a la cámara. Puedes elegir una foto de tu galería."
+- Button "Continuar" (primary style) is disabled until all fields are valid, a city was selected, a photo exists and the checkbox is checked.
+- On press: success(), save the profile (onboardingCompleted false), copy the photo to the document directory, go to screen B.
+- The screen must scroll and must not be hidden by the keyboard.
+
+SCREEN B: app/onboarding/intro.tsx
+- Headline "Ahora sí empieza lo bueno" in Melodrama Medium 48, left-aligned, centered vertically.
+- Subtitle "Empecemos a registrar tu armario" in Satoshi Regular 18, color textSecondary.
+- Primary button "Vamos" at the bottom. On press: tapLight() and go to /onboarding/wardrobe (it will be built in the next phase; for now it can be an empty placeholder screen).
+- Elements fade in one after another.
+
+DONE WHEN
+- A new user is guided through screen A and B.
+- Invalid data blocks the button.
+- Closing and reopening the app keeps the saved profile.

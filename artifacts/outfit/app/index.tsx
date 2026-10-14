@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { Shirt } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -99,6 +99,10 @@ export default function HomeScreen() {
   const timeAndWeather = weather
     ? `${formatClock(clockDate)} • ${Math.round(weather.temperatureC)}° ${weather.condition}`
     : formatClock(clockDate);
+
+  if (loading) return null;
+  if (!profile) return <Redirect href="/onboarding/profile" />;
+  if (!profile.onboardingCompleted) return <Redirect href="/onboarding/intro" />;
 
   return (
     <GradientBackground style={styles.fill}>
