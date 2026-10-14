@@ -3,17 +3,21 @@ import {
   AppState,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { router } from "expo-router";
+import { Shirt } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GradientBackground } from "@/src/components/GradientBackground";
+import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import { HomeControls } from "@/src/components/HomeControls";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
 import { useColors } from "@/src/theme";
+import { selection } from "@/src/haptics";
 
 type Screen = "home" | "profile";
 
@@ -138,6 +142,24 @@ export default function HomeScreen() {
                 >
                   {timeAndWeather}
                 </Animated.Text>
+                <Pressable
+                  accessibilityRole="button"
+                  testID="open-wardrobe"
+                  onPress={() => {
+                    void selection();
+                    router.push("/wardrobe" as never);
+                  }}
+                  style={({ pressed }) => [
+                    styles.wardrobeButton,
+                    { borderColor: colors.border },
+                    pressed && styles.wardrobeButtonPressed,
+                  ]}
+                >
+                  <Shirt size={18} color={colors.textPrimary} />
+                  <Text style={[styles.wardrobeButtonText, { color: colors.textPrimary }]}>
+                    Ver mi armario
+                  </Text>
+                </Pressable>
               </View>
             ) : (
               <View style={styles.profileContent}>
@@ -184,6 +206,25 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontFamily: "Satoshi_500Medium",
     fontSize: 17,
+  },
+  wardrobeButton: {
+    alignSelf: "flex-start",
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    marginTop: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  wardrobeButtonText: {
+    fontFamily: "Satoshi_700Bold",
+    fontSize: 14,
+  },
+  wardrobeButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.97 }],
   },
   profileContent: {
     flex: 1,

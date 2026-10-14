@@ -32,7 +32,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { GlassView } from "./GlassView";
+import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout, useColors } from "../theme";
 import { success, tapLight } from "../haptics";
 
