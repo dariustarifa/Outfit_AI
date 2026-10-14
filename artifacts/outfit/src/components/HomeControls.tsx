@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import {
   ArrowRight,
   ArrowUp,
@@ -466,7 +467,11 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Añadir"
-                  onPress={() => void tapLight()}
+                  testID="add-wardrobe-item-tab"
+                  onPress={() => {
+                    void tapLight();
+                    router.push("/item" as never);
+                  }}
                   style={styles.tabButton}
                 >
                   <Plus size={26} color={colors.iconInactive} strokeWidth={1.5} />

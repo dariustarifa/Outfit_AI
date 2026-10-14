@@ -1,23 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AppState,
-  ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { router } from "expo-router";
-import { Shirt } from "lucide-react-native";
+import { ArrowRight, CloudSun, Plus, Shirt } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
+import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { HomeControls } from "@/src/components/HomeControls";
 import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
+import { recommendDailyOutfit } from "@/src/services/daily-recommendation";
 import { useColors } from "@/src/theme";
 import { selection } from "@/src/haptics";
 
@@ -46,9 +50,14 @@ function formatDate(date: Date): string {
 
 export default function HomeScreen() {
   const colors = useColors();
-  const { profile, weather, setWeather, loading } = useApp();
+  const insets = useSafeAreaInsets();
+  const { profile, wardrobe, weather, setWeather, loading } = useApp();
   const [screen, setScreen] = useState<Screen>("home");
   const [clockDate, setClockDate] = useState(() => new Date());
+  const dailyItems = useMemo(
+    () => recommendDailyOutfit(wardrobe, clockDate, weather),
+    [clockDate, wardrobe, weather],
+  );
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -68,8 +77,8 @@ export default function HomeScreen() {
     if (loading || !profile?.onboardingCompleted) return;
     let mounted = true;
     let requestInFlight = false;
-    const latitude = profile?.latitude ?? MADRID_LATITUDE;
-    const longitude = profile?.longitude ?? MADRID_LONGITUDE;
+    const latitude = profile.latitude ?? MADRID_LATITUDE;
+    const longitude = profile.longitude ?? MADRID_LONGITUDE;
 
     const refreshWeather = async () => {
       if (requestInFlight) return;
@@ -78,7 +87,7 @@ export default function HomeScreen() {
         const snapshot = await fetchWeather(latitude, longitude);
         if (mounted) await setWeather(snapshot);
       } catch {
-        // The existing cached result remains visible; without a cache the UI shows time only.
+        // Keep the cached local weather visible when refresh is unavailable.
       } finally {
         requestInFlight = false;
       }
@@ -106,14 +115,34 @@ export default function HomeScreen() {
   const displayName =
     profile?.preferredName?.trim() || profile?.name.trim() || "Tú";
   const timeAndWeather = weather
-    ? `${formatClock(clockDate)} • ${Math.round(weather.temperatureC)}° ${weather.condition}`
-    : formatClock(clockDate);
+    ? `${formatClock(clockDate)} · ${Math.round(weather.temperatureC)}° · ${weather.condition}`
+    : `${formatClock(clockDate)} · ${profile?.city ?? ""}`;
+
+  const openWardrobe = () => {
+    void selection();
+    router.push("/wardrobe" as never);
+  };
+
+  const addFirstItem = () => {
+    void selection();
+    router.push("/item" as never);
+  };
 
   if (loading) {
     return (
       <GradientBackground style={styles.fill}>
-        <SafeAreaView style={[styles.fill, styles.loading]}>
-          <ActivityIndicator color={colors.textPrimary} />
+        <SafeAreaView style={styles.fill}>
+          <View style={styles.loadingContent}>
+            <View style={[styles.skeletonLine, styles.skeletonDate, { backgroundColor: colors.muted }]} />
+            <View style={[styles.skeletonLine, styles.skeletonTitle, { backgroundColor: colors.muted }]} />
+            <GlassView style={styles.skeletonCard}>
+              <View style={styles.skeletonCardContent}>
+                <View style={[styles.skeletonLine, styles.skeletonLabel, { backgroundColor: colors.muted }]} />
+                <View style={[styles.skeletonPhoto, { backgroundColor: colors.muted }]} />
+                <View style={[styles.skeletonLine, styles.skeletonLabel, { backgroundColor: colors.muted }]} />
+              </View>
+            </GlassView>
+          </View>
         </SafeAreaView>
       </GradientBackground>
     );
@@ -133,57 +162,184 @@ export default function HomeScreen() {
         >
           <View style={styles.screen}>
             {screen === "home" ? (
-              <View style={styles.homeContent}>
-                <Text
-                  style={[
-                    styles.date,
-                    { color: colors.textSecondary },
-                  ]}
+              <ScrollView
+                contentContainerStyle={[
+                  styles.homeContent,
+                  {
+                    paddingTop:
+                      Platform.OS === "web"
+                        ? Math.max(insets.top, 67) + nativeLayout.baseSpacing * 6
+                        : nativeLayout.baseSpacing * 6,
+                  },
+                ]}
+                showsVerticalScrollIndicator={false}
+                scrollIndicatorInsets={{ right: 1 }}
+              >
+                <Animated.Text
+                  entering={FadeInDown.duration(250)}
+                  style={[styles.date, { color: colors.textSecondary }]}
                 >
                   {formatDate(clockDate)}
-                </Text>
-                <View style={styles.greeting}>
-                  <Animated.Text
-                    entering={FadeInDown.duration(250)}
-                    style={[styles.greetingLine, { color: colors.textPrimary }]}
-                  >
-                    Hola,
-                  </Animated.Text>
-                  <Animated.Text
-                    entering={FadeInDown.duration(250).delay(80)}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.5}
-                    style={[styles.greetingLine, { color: colors.textPrimary }]}
-                  >
-                    {displayName}
-                  </Animated.Text>
-                </View>
-                <Animated.Text
-                  entering={FadeInDown.duration(250).delay(160)}
-                  style={[styles.weather, { color: colors.textSecondary }]}
-                >
-                  {timeAndWeather}
                 </Animated.Text>
-                <Pressable
-                  accessibilityRole="button"
-                  testID="open-wardrobe"
-                  onPress={() => {
-                    void selection();
-                    router.push("/wardrobe" as never);
-                  }}
-                  style={({ pressed }) => [
-                    styles.wardrobeButton,
-                    { borderColor: colors.border },
-                    pressed && styles.wardrobeButtonPressed,
-                  ]}
+                <Animated.Text
+                  entering={FadeInDown.duration(250).delay(70)}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  style={[styles.greeting, { color: colors.textPrimary }]}
                 >
-                  <Shirt size={18} color={colors.textPrimary} />
-                  <Text style={[styles.wardrobeButtonText, { color: colors.textPrimary }]}>
-                    Ver mi armario
+                  Hola, {displayName}
+                </Animated.Text>
+                <Animated.View
+                  entering={FadeInDown.duration(250).delay(130)}
+                  style={styles.weatherRow}
+                >
+                  <CloudSun size={17} color={colors.textSecondary} strokeWidth={1.7} />
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.weather, { color: colors.textSecondary }]}
+                  >
+                    {timeAndWeather}
                   </Text>
-                </Pressable>
-              </View>
+                </Animated.View>
+
+                <Animated.View
+                  entering={FadeInDown.duration(250).delay(190)}
+                  style={styles.recommendationSection}
+                >
+                  <View style={styles.sectionHeading}>
+                    <View>
+                      <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
+                        TU IDEA DE HOY
+                      </Text>
+                      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                        Un look para ti
+                      </Text>
+                    </View>
+                    <View style={[styles.dayMark, { backgroundColor: colors.muted }]}>
+                      <Shirt size={19} color={colors.primary} strokeWidth={1.7} />
+                    </View>
+                  </View>
+
+                  {dailyItems.items.length > 0 ? (
+                    <GlassView testID="daily-recommendation" style={styles.recommendationCard}>
+                      <View style={styles.recommendationContent}>
+                        <Text style={[styles.cardIntro, { color: colors.textSecondary }]}>
+                          {dailyItems.mode === "outfit"
+                            ? "Una combinación con prendas de tu armario"
+                            : dailyItems.items.length > 1
+                              ? "Un punto de partida y una capa exterior"
+                              : "Una pieza de tu armario para empezar"}
+                        </Text>
+                        <View style={styles.outfitItems}>
+                          {dailyItems.items.map(({ item, reason }, index) => (
+                            <Pressable
+                              key={item.id}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Editar prenda: ${item.note.trim() || "sin nota"}`}
+                              testID={`recommended-item-${index + 1}`}
+                              onPress={() => {
+                                void selection();
+                                router.push({ pathname: "/item", params: { id: item.id } });
+                              }}
+                              style={({ pressed }) => [
+                                styles.outfitItem,
+                                dailyItems.items.length === 1 && styles.singleOutfitItem,
+                                pressed && styles.pressed,
+                              ]}
+                            >
+                              <View
+                                style={[
+                                  styles.photoFrame,
+                                  {
+                                    borderRadius: nativeLayout.cardRadius,
+                                    backgroundColor: colors.muted,
+                                  },
+                                ]}
+                              >
+                                <Image
+                                  source={{ uri: item.imageUri }}
+                                  style={styles.photo}
+                                  resizeMode="cover"
+                                  accessibilityLabel={item.note.trim() || "Prenda guardada"}
+                                />
+                              </View>
+                              <Text
+                                numberOfLines={2}
+                                style={[styles.itemNote, { color: colors.textPrimary }]}
+                              >
+                                {item.note.trim() || "Una pieza de tu armario"}
+                              </Text>
+                              <Text style={[styles.itemReason, { color: colors.textSecondary }]}>
+                                {reason}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                        <View style={[styles.weatherTip, { borderTopColor: colors.border }]}>
+                          <Text style={[styles.weatherTipText, { color: colors.textSecondary }]}>
+                            {dailyItems.explanation}
+                          </Text>
+                        </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          testID="open-wardrobe"
+                          onPress={openWardrobe}
+                          style={({ pressed }) => [
+                            styles.secondaryAction,
+                            { borderColor: colors.border },
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text style={[styles.secondaryActionText, { color: colors.textPrimary }]}>
+                            Ver mi armario
+                          </Text>
+                          <ArrowRight size={17} color={colors.primary} strokeWidth={1.8} />
+                        </Pressable>
+                      </View>
+                    </GlassView>
+                  ) : (
+                    <GlassView testID="empty-wardrobe-recommendation" style={styles.emptyCard}>
+                      <View style={styles.emptyContent}>
+                        <View style={[styles.emptyIcon, { backgroundColor: colors.muted }]}>
+                          <Shirt size={25} color={colors.primary} strokeWidth={1.7} />
+                        </View>
+                        <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                          Empezamos con lo que ya tienes
+                        </Text>
+                        <Text style={[styles.emptyCopy, { color: colors.textSecondary }]}>
+                          Añade una foto de una prenda de tu armario. Cada día te propondremos una idea para vestirla.
+                        </Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          testID="add-first-wardrobe-item"
+                          onPress={addFirstItem}
+                          style={({ pressed }) => [
+                            styles.primaryAction,
+                            { backgroundColor: colors.primary },
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Plus size={18} color={colors.primaryForeground} strokeWidth={2} />
+                          <Text style={[styles.primaryActionText, { color: colors.primaryForeground }]}>
+                            Añadir primera prenda
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          testID="empty-state-open-wardrobe"
+                          onPress={openWardrobe}
+                          style={styles.textAction}
+                        >
+                          <Text style={[styles.textActionText, { color: colors.textSecondary }]}>
+                            Ver mi armario
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </GlassView>
+                  )}
+                </Animated.View>
+              </ScrollView>
             ) : (
               <View style={styles.profileContent}>
                 <Text style={[styles.profileTitle, { color: colors.textPrimary }]}>
@@ -200,58 +356,187 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  fill: {
-    flex: 1,
-  },
-  loading: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  fill: { flex: 1 },
   screen: {
     flex: 1,
     position: "relative",
   },
   homeContent: {
-    paddingTop: 90,
-    paddingHorizontal: 20,
+    paddingTop: nativeLayout.baseSpacing * 6,
+    paddingHorizontal: nativeLayout.screenHorizontalPadding,
+    paddingBottom: nativeLayout.primaryButtonHeight * 4,
   },
   date: {
-    fontFamily: "Satoshi_500Medium",
-    fontSize: 15,
-    letterSpacing: 0.5,
+    fontFamily: "Satoshi_700Bold",
+    fontSize: 11,
+    letterSpacing: 1.4,
   },
   greeting: {
-    marginTop: 12,
-  },
-  greetingLine: {
     fontFamily: "Melodrama_500Medium",
-    fontSize: 100,
-    lineHeight: 104,
+    fontSize: 43,
+    lineHeight: 49,
+    marginTop: nativeLayout.baseSpacing * 2,
     includeFontPadding: false,
   },
-  weather: {
-    marginTop: 16,
-    fontFamily: "Satoshi_500Medium",
-    fontSize: 17,
-  },
-  wardrobeButton: {
-    alignSelf: "flex-start",
-    minHeight: 48,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    marginTop: 24,
+  weatherRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    gap: nativeLayout.baseSpacing * 2,
+    marginTop: nativeLayout.baseSpacing * 2,
   },
-  wardrobeButtonText: {
+  weather: {
+    flexShrink: 1,
+    fontFamily: "Satoshi_500Medium",
+    fontSize: 14,
+  },
+  recommendationSection: {
+    marginTop: nativeLayout.baseSpacing * 7,
+  },
+  sectionHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: nativeLayout.baseSpacing * 3,
+  },
+  eyebrow: {
+    fontFamily: "Satoshi_700Bold",
+    fontSize: 10,
+    letterSpacing: 1.5,
+  },
+  sectionTitle: {
+    fontFamily: "Melodrama_500Medium",
+    fontSize: 29,
+    lineHeight: 34,
+    marginTop: nativeLayout.baseSpacing,
+  },
+  dayMark: {
+    width: nativeLayout.baseSpacing * 11,
+    height: nativeLayout.baseSpacing * 11,
+    borderRadius: nativeLayout.baseSpacing * 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recommendationCard: {
+    minHeight: 330,
+  },
+  recommendationContent: {
+    padding: nativeLayout.baseSpacing * 3,
+  },
+  cardIntro: {
+    fontFamily: "Satoshi_500Medium",
+    fontSize: 13,
+    marginBottom: nativeLayout.baseSpacing * 3,
+  },
+  outfitItems: {
+    flexDirection: "row",
+    gap: nativeLayout.baseSpacing * 3,
+  },
+  outfitItem: {
+    flex: 1,
+    minWidth: 0,
+    gap: nativeLayout.baseSpacing * 2,
+  },
+  singleOutfitItem: {
+    flex: 1,
+  },
+  photoFrame: {
+    width: "100%",
+    aspectRatio: 0.9,
+    overflow: "hidden",
+  },
+  photo: {
+    width: "100%",
+    height: "100%",
+  },
+  itemNote: {
+    fontFamily: "Satoshi_500Medium",
+    fontSize: 13,
+    lineHeight: 17,
+    paddingHorizontal: 0,
+  },
+  itemReason: {
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  weatherTip: {
+    borderTopWidth: 1,
+    paddingTop: nativeLayout.baseSpacing * 3,
+    marginTop: nativeLayout.baseSpacing,
+  },
+  weatherTipText: {
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  secondaryAction: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: nativeLayout.pillRadius,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: nativeLayout.baseSpacing * 2,
+    marginTop: nativeLayout.baseSpacing * 3,
+  },
+  secondaryActionText: {
+    fontFamily: "Satoshi_700Bold",
+    fontSize: 13,
+  },
+  emptyCard: {
+    minHeight: 320,
+  },
+  emptyContent: {
+    alignItems: "center",
+    paddingHorizontal: nativeLayout.baseSpacing * 5,
+    paddingTop: nativeLayout.baseSpacing * 6,
+    paddingBottom: nativeLayout.baseSpacing * 5,
+  },
+  emptyIcon: {
+    width: nativeLayout.baseSpacing * 13,
+    height: nativeLayout.baseSpacing * 13,
+    borderRadius: nativeLayout.baseSpacing * 7,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: nativeLayout.baseSpacing * 3,
+  },
+  emptyTitle: {
+    fontFamily: "Satoshi_700Bold",
+    fontSize: 17,
+    lineHeight: 23,
+    textAlign: "center",
+  },
+  emptyCopy: {
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    marginTop: nativeLayout.baseSpacing * 2,
+    maxWidth: 290,
+  },
+  primaryAction: {
+    minHeight: nativeLayout.primaryButtonHeight,
+    width: "100%",
+    borderRadius: nativeLayout.pillRadius,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: nativeLayout.baseSpacing * 2,
+    marginTop: nativeLayout.baseSpacing * 4,
+  },
+  primaryActionText: {
     fontFamily: "Satoshi_700Bold",
     fontSize: 14,
   },
-  wardrobeButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.97 }],
+  textAction: {
+    minHeight: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: nativeLayout.baseSpacing,
+  },
+  textActionText: {
+    fontFamily: "Satoshi_500Medium",
+    fontSize: 13,
   },
   profileContent: {
     flex: 1,
@@ -263,4 +548,35 @@ const styles = StyleSheet.create({
     fontFamily: "Satoshi_500Medium",
     fontSize: 24,
   },
+  loadingContent: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: nativeLayout.screenHorizontalPadding,
+    gap: nativeLayout.baseSpacing * 4,
+  },
+  skeletonLine: {
+    height: nativeLayout.baseSpacing * 2,
+    borderRadius: nativeLayout.pillRadius,
+    opacity: 0.55,
+  },
+  skeletonDate: { width: "45%" },
+  skeletonTitle: {
+    width: "76%",
+    height: nativeLayout.baseSpacing * 8,
+    marginBottom: nativeLayout.baseSpacing * 2,
+  },
+  skeletonCard: { minHeight: 310 },
+  skeletonCardContent: {
+    flex: 1,
+    padding: nativeLayout.baseSpacing * 4,
+    gap: nativeLayout.baseSpacing * 3,
+  },
+  skeletonLabel: { width: "54%" },
+  skeletonPhoto: {
+    flex: 1,
+    minHeight: 190,
+    borderRadius: nativeLayout.cardRadius,
+    opacity: 0.45,
+  },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
 });
