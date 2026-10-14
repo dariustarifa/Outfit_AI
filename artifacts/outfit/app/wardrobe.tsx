@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -7,11 +7,20 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { ArrowLeft, ArrowUpRight, Plus, Shirt, Trash2 } from "lucide-react-native";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Plus,
+  Search,
+  Shirt,
+  Trash2,
+  X,
+} from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import {
@@ -21,11 +30,17 @@ import {
 import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 import { useApp } from "@/src/context/AppContext";
 import type { WardrobeItem } from "@/src/types";
+import { searchWardrobeItems } from "@/src/wardrobe-search";
 import { selection, success } from "@/src/haptics";
 
 export default function WardrobeScreen() {
   const colors = useColors();
   const { wardrobe, loading, error, removeItem } = useApp();
+  const [query, setQuery] = useState("");
+  const filteredWardrobe = useMemo(
+    () => searchWardrobeItems(wardrobe, query),
+    [query, wardrobe],
+  );
 
   const confirmRemove = useCallback(
     (item: WardrobeItem) => {
@@ -140,7 +155,7 @@ export default function WardrobeScreen() {
     <GradientBackground style={styles.fill}>
       <SafeAreaView style={styles.safeArea}>
         <FlatList
-          data={loading ? [] : wardrobe}
+          data={loading ? [] : filteredWardrobe}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           numColumns={2}
@@ -181,6 +196,43 @@ export default function WardrobeScreen() {
               <Text style={[styles.intro, { color: colors.textSecondary }]}>
                 Guarda aquí las piezas que ya tienes y te encanta llevar.
               </Text>
+              {!loading && wardrobe.length > 0 ? (
+                <View
+                  style={[
+                    styles.searchField,
+                    {
+                      borderColor: nativeEffects.glass.borderColor,
+                      backgroundColor: colors.input,
+                    },
+                  ]}
+                >
+                  <Search size={19} color={colors.textSecondary} />
+                  <TextInput
+                    accessibilityLabel="Buscar prendas por nota"
+                    testID="wardrobe-search-input"
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Buscar por nota"
+                    placeholderTextColor={colors.textSecondary}
+                    returnKeyType="search"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[styles.searchInput, { color: colors.textPrimary }]}
+                  />
+                  {query.length > 0 ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Borrar búsqueda"
+                      testID="clear-wardrobe-search"
+                      hitSlop={8}
+                      onPress={() => setQuery("")}
+                      style={styles.clearSearchButton}
+                    >
+                      <X size={18} color={colors.textSecondary} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 testID="add-wardrobe-item"
@@ -208,6 +260,39 @@ export default function WardrobeScreen() {
               <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
                 Preparando tu armario…
               </Text>
+            ) : wardrobe.length > 0 ? (
+              <GlassView style={styles.emptyCard}>
+                <View style={styles.emptyContent}>
+                  <View
+                    style={[
+                      styles.emptyIcon,
+                      { backgroundColor: colors.muted },
+                    ]}
+                  >
+                    <Search size={25} color={colors.textPrimary} />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                    No encontramos prendas
+                  </Text>
+                  <Text style={[styles.emptyCopy, { color: colors.textSecondary }]}>
+                    Prueba con otra palabra o borra la búsqueda para ver todo tu armario.
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    testID="clear-search-empty-state"
+                    onPress={() => setQuery("")}
+                    style={({ pressed }) => [
+                      styles.clearSearchAction,
+                      { borderColor: colors.textPrimary },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.clearSearchActionText, { color: colors.textPrimary }]}>
+                      Borrar búsqueda
+                    </Text>
+                  </Pressable>
+                </View>
+              </GlassView>
             ) : (
               <GlassView style={styles.emptyCard}>
                 <View style={styles.emptyContent}>
@@ -269,6 +354,29 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: 12,
     maxWidth: 300,
+  },
+  searchField: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: nativeLayout.pillRadius,
+    marginTop: 18,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    minHeight: 50,
+    paddingVertical: 0,
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 15,
+  },
+  clearSearchButton: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   addButton: {
     minHeight: nativeLayout.primaryButtonHeight,
@@ -341,6 +449,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     textAlign: "center",
+  },
+  clearSearchAction: {
+    minHeight: 42,
+    borderWidth: 1,
+    borderRadius: nativeLayout.pillRadius,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    marginTop: 18,
+  },
+  clearSearchActionText: {
+    fontFamily: "Satoshi_700Bold",
+    fontSize: 14,
   },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
 });
