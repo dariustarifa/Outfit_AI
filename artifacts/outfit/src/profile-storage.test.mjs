@@ -20,6 +20,9 @@ function createEnvironment(platform) {
   const values = new Map();
   const files = new Map();
   const directories = new Set();
+  let failNextMetadataWrite = false;
+  let failNextDelete = false;
+  let failAfterMetadataWrite = false;
   const asyncStorage = {
     async multiGet(keys) {
       return keys.map((key) => [key, values.get(key) ?? null]);
@@ -57,6 +60,10 @@ function createEnvironment(platform) {
       files.set(to, files.get(from));
     },
     async deleteAsync(uri) {
+      if (failNextDelete) {
+        failNextDelete = false;
+        throw new Error("Photo cleanup failed.");
+      }
       files.delete(uri);
     },
   };
@@ -72,10 +79,19 @@ function createEnvironment(platform) {
   const dependencies = {
     copyImageToAppDocuments: storage.copyImageToAppDocuments,
     async commit(next) {
+      if (failNextMetadataWrite) {
+        failNextMetadataWrite = false;
+        throw new Error("Profile metadata write failed.");
+      }
       await storage.saveAppData(next);
       currentData = next;
+      if (failAfterMetadataWrite) {
+        failAfterMetadataWrite = false;
+        throw new Error("Profile metadata write reported a failure.");
+      }
     },
     removeStoredImage: storage.removeStoredImage,
+    removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
   };
 
   return {
@@ -90,6 +106,16 @@ function createEnvironment(platform) {
     addSource(uri, contents) {
       files.set(uri, contents);
     },
+    failNextMetadataWrite() {
+      failNextMetadataWrite = true;
+    },
+    failNextDelete() {
+      failNextDelete = true;
+    },
+    failAfterMetadataWrite() {
+      failAfterMetadataWrite = true;
+    },
+    saveDraft: storage.saveOnboardingDraft,
   };
 }
 
@@ -137,6 +163,123 @@ test("a failed native photo copy prevents profile persistence", async () => {
   );
   const reloaded = await env.reload();
   assert.equal(reloaded.profile, null);
+});
+
+test("a failed profile metadata save immediately removes its unreferenced new photo", async () => {
+  const env = createEnvironment("ios");
+  const sourceUri = "file:///picker/profile-photo.jpg";
+  env.addSource(sourceUri, "profile-image");
+  env.failNextMetadataWrite();
+
+  await assert.rejects(
+    env.save({ ...profile, bodyPhotoUri: sourceUri }),
+    /Profile metadata write failed/,
+  );
+
+  assert.deepEqual([...env.files.keys()], [sourceUri]);
+  assert.equal((await env.reload()).profile, null);
+});
+
+test("a failed photo cleanup is retried safely during the next load", async () => {
+  const env = createEnvironment("ios");
+  const sourceUri = "file:///picker/profile-photo.jpg";
+  env.addSource(sourceUri, "profile-image");
+  env.failNextMetadataWrite();
+  env.failNextDelete();
+
+  await assert.rejects(
+    env.save({ ...profile, bodyPhotoUri: sourceUri }),
+    (error) =>
+      error instanceof AggregateError &&
+      /Profile metadata write failed/.test(error.errors[0].message) &&
+      /Photo cleanup failed/.test(error.errors[1].message),
+  );
+
+  const orphanedPhoto = [...env.files.keys()].find((uri) =>
+    uri.startsWith("file:///app/documents/outfit/wardrobe/"),
+  );
+  assert.ok(orphanedPhoto);
+  assert.equal((await env.reload()).profile, null);
+  assert.equal(env.files.has(orphanedPhoto), false);
+});
+
+test("a failed photo replacement keeps the previously saved photo", async () => {
+  const env = createEnvironment("ios");
+  const oldSourceUri = "file:///picker/old-profile-photo.jpg";
+  const nextSourceUri = "file:///picker/new-profile-photo.jpg";
+  env.addSource(oldSourceUri, "old-profile-image");
+  env.addSource(nextSourceUri, "new-profile-image");
+  const previousProfile = await env.save({
+    ...profile,
+    bodyPhotoUri: oldSourceUri,
+  });
+  env.failNextMetadataWrite();
+
+  await assert.rejects(
+    env.save({ ...profile, bodyPhotoUri: nextSourceUri }),
+    /Profile metadata write failed/,
+  );
+
+  assert.equal(
+    env.files.get(previousProfile.bodyPhotoUri),
+    "old-profile-image",
+  );
+  assert.equal(
+    [...env.files.keys()].filter((uri) =>
+      uri.startsWith("file:///app/documents/outfit/wardrobe/"),
+    ).length,
+    1,
+  );
+  assert.equal(
+    (await env.reload()).profile.bodyPhotoUri,
+    previousProfile.bodyPhotoUri,
+  );
+});
+
+test("failed save cleanup preserves a photo referenced by an onboarding draft", async () => {
+  const env = createEnvironment("ios");
+  const managedPhotoUri =
+    "file:///app/documents/outfit/wardrobe/onboarding-photo.jpg";
+  env.files.set(managedPhotoUri, "draft-profile-image");
+  await env.saveDraft({
+    name: "Ada Lovelace",
+    preferredName: "Ada",
+    age: "36",
+    heightCm: "168",
+    city: "London",
+    bodyPhotoUri: managedPhotoUri,
+    photoConsent: true,
+    step: 4,
+    selectedCity: {
+      name: "London",
+      latitude: 51.5072,
+      longitude: -0.1276,
+    },
+  });
+  env.failNextMetadataWrite();
+
+  await assert.rejects(
+    env.save({ ...profile, bodyPhotoUri: managedPhotoUri }),
+    /Profile metadata write failed/,
+  );
+
+  assert.equal(env.files.get(managedPhotoUri), "draft-profile-image");
+});
+
+test("failed save cleanup preserves a photo when metadata references it", async () => {
+  const env = createEnvironment("ios");
+  const sourceUri = "file:///picker/profile-photo.jpg";
+  env.addSource(sourceUri, "profile-image");
+  env.failAfterMetadataWrite();
+
+  await assert.rejects(
+    env.save({ ...profile, bodyPhotoUri: sourceUri }),
+    /Profile metadata write reported a failure/,
+  );
+
+  const reloaded = await env.reload();
+  assert.ok(reloaded.profile.bodyPhotoUri);
+  assert.equal(env.files.get(reloaded.profile.bodyPhotoUri), "profile-image");
 });
 
 test("loading saved data preserves the profile photo while removing stale managed photos", async () => {

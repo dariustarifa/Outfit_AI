@@ -206,6 +206,7 @@ test("a failed profile save keeps onboarding on the same step and can be retried
         currentData = nextData;
       },
       removeStoredImage: storage.removeStoredImage,
+      removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
     });
   const draft = {
     name: "Ada Lovelace",

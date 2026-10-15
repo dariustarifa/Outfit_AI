@@ -148,6 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           copyImageToAppDocuments,
           commit,
           removeStoredImage,
+          removeUnreferencedStoredImage,
         });
       } catch (cause) {
         const nextError =

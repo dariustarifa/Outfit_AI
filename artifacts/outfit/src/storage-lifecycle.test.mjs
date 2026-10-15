@@ -82,6 +82,7 @@ function createTestEnvironment(platform = "ios") {
         currentData = next;
       },
       removeStoredImage: storage.removeStoredImage,
+      removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
     });
   }
   const actions = createWardrobeActions({

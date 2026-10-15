@@ -349,10 +349,14 @@ export function createLocalStorage({
   async function removeUnreferencedStoredImage(
     imageUri: string,
   ): Promise<void> {
-    const data = await readAppData();
+    const [data, onboardingDraft] = await Promise.all([
+      readAppData(),
+      loadOnboardingDraft(),
+    ]);
     const isReferenced =
       data.profile?.bodyPhotoUri === imageUri ||
-      data.wardrobe.some((item) => item.imageUri === imageUri);
+      data.wardrobe.some((item) => item.imageUri === imageUri) ||
+      onboardingDraft?.bodyPhotoUri === imageUri;
     if (!isReferenced) {
       await removeStoredImage(imageUri);
     }
