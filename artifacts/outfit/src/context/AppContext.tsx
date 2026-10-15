@@ -10,16 +10,20 @@ import {
 } from "react";
 import {
   copyImageToAppDocuments,
+  clearOnboardingDraft as clearStoredOnboardingDraft,
   loadAppData,
+  loadOnboardingDraft,
   loadWeatherSnapshot,
   removeStoredImage,
   removeUnreferencedStoredImage,
   saveAppData,
+  saveOnboardingDraft as saveStoredOnboardingDraft,
   saveWeatherSnapshot,
 } from "../storage";
 import { createWardrobeActions } from "../wardrobe-actions";
 import type {
   Profile,
+  OnboardingDraft,
   ProfileUpdate,
   StoredAppData,
   WardrobeItem,
@@ -33,6 +37,10 @@ export interface AppContextValue extends StoredAppData {
   weather: WeatherSnapshot | null;
   loading: boolean;
   error: Error | null;
+  onboardingDraft: OnboardingDraft | null;
+  saveOnboardingDraft: (draft: OnboardingDraft) => Promise<void>;
+  clearOnboardingDraft: () => Promise<void>;
+  saveOnboardingPhoto: (sourceUri: string) => Promise<string>;
   setProfile: (profile: Profile | null) => Promise<Profile | null>;
   updateProfile: (updates: ProfileUpdate) => Promise<Profile>;
   addItem: (item: NewWardrobeItem) => Promise<WardrobeItem>;
@@ -50,6 +58,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [profile, setProfileState] = useState<Profile | null>(null);
   const [wardrobe, setWardrobeState] = useState<WardrobeItem[]>([]);
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null);
+  const [onboardingDraft, setOnboardingDraft] =
+    useState<OnboardingDraft | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const currentData = useRef<StoredAppData>({ profile: null, wardrobe: [] });
@@ -57,12 +67,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    loadAppData()
-      .then((stored) => {
+    Promise.all([loadAppData(), loadOnboardingDraft()])
+      .then(([stored, draft]) => {
         if (!mounted) return;
         currentData.current = stored;
         setProfileState(stored.profile);
         setWardrobeState(stored.wardrobe);
+        setOnboardingDraft(draft);
       })
       .catch((cause: unknown) => {
         if (mounted) {
@@ -112,6 +123,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const persistOnboardingDraft = useCallback(
+    async (draft: OnboardingDraft) => {
+      await saveStoredOnboardingDraft(draft);
+      setOnboardingDraft(draft);
+    },
+    [],
+  );
+
+  const clearOnboardingDraft = useCallback(async () => {
+    await clearStoredOnboardingDraft();
+    setOnboardingDraft(null);
+  }, []);
+
+  const persistOnboardingPhoto = useCallback(
+    (sourceUri: string) => copyImageToAppDocuments(sourceUri),
+    [],
+  );
+
   const setProfile = useCallback(
     async (nextProfile: Profile | null) => {
       try {
@@ -157,6 +186,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       weather,
       loading,
       error,
+      onboardingDraft,
+      saveOnboardingDraft: persistOnboardingDraft,
+      clearOnboardingDraft,
+      saveOnboardingPhoto: persistOnboardingPhoto,
       setProfile,
       updateProfile,
       addItem,
@@ -170,6 +203,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       weather,
       loading,
       error,
+      onboardingDraft,
+      persistOnboardingDraft,
+      clearOnboardingDraft,
+      persistOnboardingPhoto,
       setProfile,
       updateProfile,
       addItem,

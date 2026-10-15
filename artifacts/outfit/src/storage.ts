@@ -57,6 +57,9 @@ const storage = createLocalStorage({
 export const {
   loadAppData,
   saveAppData,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+  clearOnboardingDraft,
   loadWeatherSnapshot,
   saveWeatherSnapshot,
   copyImageToAppDocuments,

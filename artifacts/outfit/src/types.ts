@@ -14,6 +14,24 @@ export interface Profile {
   onboardingCompleted: boolean;
 }
 
+export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export interface OnboardingDraft {
+  name: string;
+  preferredName: string;
+  age: string;
+  heightCm: string;
+  city: string;
+  bodyPhotoUri: string;
+  photoConsent: boolean;
+  step: OnboardingStep;
+  selectedCity: {
+    name: string;
+    latitude: number;
+    longitude: number;
+  } | null;
+}
+
 export type ProfileUpdate = Partial<
   Pick<
     Profile,

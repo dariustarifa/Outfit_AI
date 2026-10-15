@@ -48,6 +48,7 @@ import {
   type OnboardingStep,
 } from "../onboarding-progress";
 import { selectProfilePhoto } from "../profile-photo";
+import type { OnboardingDraft } from "../types";
 
 type SearchState = "idle" | "waiting" | "loading" | "success" | "error";
 
@@ -116,8 +117,18 @@ function isProfileReady(profile: Profile): boolean {
 export default function ProgressiveOnboardingScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { profile, loading, setProfile } = useApp();
+  const {
+    profile,
+    loading,
+    onboardingDraft,
+    saveOnboardingDraft,
+    clearOnboardingDraft,
+    saveOnboardingPhoto,
+    setProfile,
+  } = useApp();
   const initialized = useRef(false);
+  const draftSaveSequence = useRef(0);
+  const [restored, setRestored] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
     name: "",
     preferredName: "",
@@ -132,6 +143,7 @@ export default function ProgressiveOnboardingScreen() {
   const [cityResults, setCityResults] = useState<CityResult[]>([]);
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [message, setMessage] = useState("");
+  const [draftSaveError, setDraftSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const [cameraPermission, requestCameraPermission] =
     ImagePicker.useCameraPermissions();
@@ -148,16 +160,52 @@ export default function ProgressiveOnboardingScreen() {
   useEffect(() => {
     if (loading || initialized.current) return;
     initialized.current = true;
-    setForm(formFromProfile(profile));
-    setSelectedCity(cityFromProfile(profile));
+    setForm(
+      onboardingDraft
+        ? {
+            name: onboardingDraft.name,
+            preferredName: onboardingDraft.preferredName,
+            age: onboardingDraft.age,
+            heightCm: onboardingDraft.heightCm,
+            city: onboardingDraft.city,
+            bodyPhotoUri: onboardingDraft.bodyPhotoUri,
+            photoConsent: onboardingDraft.photoConsent,
+          }
+        : formFromProfile(profile),
+    );
+    setSelectedCity(
+      onboardingDraft?.selectedCity ?? cityFromProfile(profile),
+    );
     if (profile && !profile.onboardingCompleted && isProfileReady(profile)) {
       router.replace(
         profile.gender ? "/onboarding/intro" : "/onboarding/gender",
       );
       return;
     }
-    setStep(getInitialOnboardingStep(profile));
-  }, [loading, profile]);
+    setStep(onboardingDraft?.step ?? getInitialOnboardingStep(profile));
+    setRestored(true);
+  }, [loading, onboardingDraft, profile]);
+
+  useEffect(() => {
+    if (!restored) return;
+    const sequence = ++draftSaveSequence.current;
+    const draft: OnboardingDraft = {
+      ...form,
+      step,
+      selectedCity,
+    };
+    void saveOnboardingDraft(draft)
+      .then(() => {
+        if (draftSaveSequence.current === sequence) setDraftSaveError("");
+      })
+      .catch(() => {
+        if (draftSaveSequence.current === sequence) {
+          setDraftSaveError(
+            "No pudimos guardar tu progreso. Mantén la app abierta e inténtalo de nuevo.",
+          );
+        }
+      });
+  }, [form, restored, saveOnboardingDraft, selectedCity, step]);
 
   useEffect(() => {
     const query = form.city.trim();
@@ -258,15 +306,21 @@ export default function ProgressiveOnboardingScreen() {
     setMessage("");
     try {
       const saved = await setProfile(nextProfile);
-      if (saved) {
-        setForm((current) => ({
-          ...current,
-          preferredName: effectivePreferredName,
-          bodyPhotoUri: saved.bodyPhotoUri,
-        }));
-      }
+      const nextForm = {
+        ...form,
+        preferredName: effectivePreferredName,
+        bodyPhotoUri: saved?.bodyPhotoUri ?? form.bodyPhotoUri,
+      };
 
       if (step === 6) {
+        try {
+          await clearOnboardingDraft();
+        } catch {
+          setDraftSaveError(
+            "No pudimos guardar tu progreso. Mantén la app abierta e inténtalo de nuevo.",
+          );
+          return;
+        }
         void success();
         router.replace(
           nextProfile.gender
@@ -274,9 +328,21 @@ export default function ProgressiveOnboardingScreen() {
             : "/onboarding/gender",
         );
       } else {
-        setStep(
-          (current) => Math.min(current + 1, STEP_COUNT - 1) as OnboardingStep,
-        );
+        const nextStep = Math.min(step + 1, STEP_COUNT - 1) as OnboardingStep;
+        try {
+          await saveOnboardingDraft({
+            ...nextForm,
+            step: nextStep,
+            selectedCity,
+          });
+        } catch {
+          setDraftSaveError(
+            "No pudimos guardar tu progreso. Mantén la app abierta e inténtalo de nuevo.",
+          );
+          return;
+        }
+        setStep(nextStep);
+        if (saved) setForm(nextForm);
       }
     } catch {
       setMessage(
@@ -318,7 +384,8 @@ export default function ProgressiveOnboardingScreen() {
         setMessage("No pudimos leer esa foto. Prueba a elegir otra.");
         return;
       }
-      updateForm("bodyPhotoUri", selection.uri);
+      const savedUri = await saveOnboardingPhoto(selection.uri);
+      updateForm("bodyPhotoUri", savedUri);
     } catch {
       setMessage("No se pudo abrir la galería. Inténtalo de nuevo.");
     }
@@ -347,7 +414,8 @@ export default function ProgressiveOnboardingScreen() {
         setMessage("No pudimos leer esa foto. Prueba a hacer otra.");
         return;
       }
-      updateForm("bodyPhotoUri", selection.uri);
+      const savedUri = await saveOnboardingPhoto(selection.uri);
+      updateForm("bodyPhotoUri", savedUri);
     } catch {
       setMessage(
         "No se pudo abrir la cámara. Puedes elegir una foto de tu galería.",
@@ -834,6 +902,14 @@ export default function ProgressiveOnboardingScreen() {
               style={[styles.message, { color: colors.destructive }]}
             >
               {message}
+            </Text>
+          ) : null}
+          {draftSaveError ? (
+            <Text
+              accessibilityRole="alert"
+              style={[styles.message, { color: colors.destructive }]}
+            >
+              {draftSaveError}
             </Text>
           ) : null}
 

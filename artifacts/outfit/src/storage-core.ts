@@ -1,5 +1,6 @@
 import type {
   Profile,
+  OnboardingDraft,
   StoredAppData,
   WardrobeItem,
   WeatherSnapshot,
@@ -39,6 +40,7 @@ interface LocalStorageDependencies {
 const PROFILE_KEY = "outfit:profile:v1";
 const WARDROBE_KEY = "outfit:wardrobe:v1";
 const WEATHER_KEY = "outfit:weather:v1";
+const ONBOARDING_DRAFT_KEY = "outfit:onboarding-draft:v1";
 const PHOTO_DIRECTORY_NAME = "outfit/wardrobe/";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -107,6 +109,34 @@ function isWeatherSnapshot(value: unknown): value is WeatherSnapshot {
   );
 }
 
+function isOnboardingDraft(value: unknown): value is OnboardingDraft {
+  if (!isRecord(value)) return false;
+  const selectedCity = value.selectedCity;
+  const validSelectedCity =
+    selectedCity === null ||
+    (isRecord(selectedCity) &&
+      typeof selectedCity.name === "string" &&
+      typeof selectedCity.latitude === "number" &&
+      Number.isFinite(selectedCity.latitude) &&
+      typeof selectedCity.longitude === "number" &&
+      Number.isFinite(selectedCity.longitude));
+
+  return (
+    typeof value.name === "string" &&
+    typeof value.preferredName === "string" &&
+    typeof value.age === "string" &&
+    typeof value.heightCm === "string" &&
+    typeof value.city === "string" &&
+    typeof value.bodyPhotoUri === "string" &&
+    typeof value.photoConsent === "boolean" &&
+    typeof value.step === "number" &&
+    Number.isInteger(value.step) &&
+    value.step >= 0 &&
+    value.step <= 6 &&
+    validSelectedCity
+  );
+}
+
 function parseJson(raw: string | null, label: string): unknown {
   if (raw === null) return null;
 
@@ -123,6 +153,22 @@ export function createLocalStorage({
   platform,
   persistWebImage,
 }: LocalStorageDependencies) {
+  let onboardingDraftWriteQueue: Promise<void> = Promise.resolve();
+
+  async function loadOnboardingDraft(): Promise<OnboardingDraft | null> {
+    const parsed = parseJson(
+      await asyncStorage.getItem(ONBOARDING_DRAFT_KEY),
+      "onboarding draft",
+    );
+    if (parsed === null) return null;
+    if (!isOnboardingDraft(parsed)) {
+      throw new Error(
+        "Saved onboarding draft does not match the current app format.",
+      );
+    }
+    return parsed;
+  }
+
   async function readAppData(): Promise<StoredAppData> {
     const values = await asyncStorage.multiGet([PROFILE_KEY, WARDROBE_KEY]);
     const stored = new Map(values);
@@ -150,7 +196,10 @@ export function createLocalStorage({
     };
   }
 
-  async function reconcileManagedPhotos(data: StoredAppData): Promise<void> {
+  async function reconcileManagedPhotos(
+    data: StoredAppData,
+    onboardingDraft: OnboardingDraft | null,
+  ): Promise<void> {
     if (platform === "web" || !fileSystem.documentDirectory) return;
 
     const photoDirectory = `${fileSystem.documentDirectory}${PHOTO_DIRECTORY_NAME}`;
@@ -160,6 +209,7 @@ export function createLocalStorage({
     const referencedImages = new Set(
       [
         data.profile?.bodyPhotoUri,
+        onboardingDraft?.bodyPhotoUri,
         ...data.wardrobe.map((item) => item.imageUri),
       ].filter(
         (uri): uri is string => typeof uri === "string" && uri.length > 0,
@@ -180,7 +230,7 @@ export function createLocalStorage({
 
   async function loadAppData(): Promise<StoredAppData> {
     const data = await readAppData();
-    await reconcileManagedPhotos(data);
+    await reconcileManagedPhotos(data, await loadOnboardingDraft());
     return data;
   }
 
@@ -189,6 +239,27 @@ export function createLocalStorage({
       [PROFILE_KEY, JSON.stringify(data.profile)],
       [WARDROBE_KEY, JSON.stringify(data.wardrobe)],
     ]);
+  }
+
+  function saveOnboardingDraft(draft: OnboardingDraft): Promise<void> {
+    if (!isOnboardingDraft(draft)) {
+      return Promise.reject(
+        new Error("Onboarding draft does not match the current app format."),
+      );
+    }
+    const pendingWrite = onboardingDraftWriteQueue.then(() =>
+      asyncStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(draft)),
+    );
+    onboardingDraftWriteQueue = pendingWrite.catch(() => undefined);
+    return pendingWrite;
+  }
+
+  function clearOnboardingDraft(): Promise<void> {
+    const pendingClear = onboardingDraftWriteQueue.then(() =>
+      asyncStorage.removeItem(ONBOARDING_DRAFT_KEY),
+    );
+    onboardingDraftWriteQueue = pendingClear.catch(() => undefined);
+    return pendingClear;
   }
 
   async function loadWeatherSnapshot(): Promise<WeatherSnapshot | null> {
@@ -290,6 +361,9 @@ export function createLocalStorage({
   return {
     loadAppData,
     saveAppData,
+    loadOnboardingDraft,
+    saveOnboardingDraft,
+    clearOnboardingDraft,
     loadWeatherSnapshot,
     saveWeatherSnapshot,
     copyImageToAppDocuments,
