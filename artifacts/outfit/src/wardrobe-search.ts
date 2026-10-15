@@ -12,6 +12,18 @@ export function searchWardrobeItems(
   );
 }
 
+export function getWardrobeScreenState(
+  wardrobe: WardrobeItem[],
+  query: string,
+) {
+  const filteredWardrobe = searchWardrobeItems(wardrobe, query);
+
+  return {
+    filteredWardrobe,
+    displayCount: query.trim() ? filteredWardrobe.length : wardrobe.length,
+  };
+}
+
 function normalizeSearchText(value: string): string {
   return value
     .trim()

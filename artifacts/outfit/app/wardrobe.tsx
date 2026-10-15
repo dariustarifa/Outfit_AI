@@ -26,7 +26,7 @@ import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { useTheme } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import type { WardrobeItem } from "@/src/types";
-import { searchWardrobeItems } from "@/src/wardrobe-search";
+import { getWardrobeScreenState } from "@/src/wardrobe-search";
 import { selection, success } from "@/src/haptics";
 import { PopTrigger } from "@/src/components/PopTrigger";
 import { WardrobeItemEditor } from "./item";
@@ -37,8 +37,8 @@ export default function WardrobeScreen() {
   const { source } = useLocalSearchParams<{ source?: string }>();
   const { wardrobe, loading, error, removeItem } = useApp();
   const [query, setQuery] = useState("");
-  const filteredWardrobe = useMemo(
-    () => searchWardrobeItems(wardrobe, query),
+  const { filteredWardrobe, displayCount } = useMemo(
+    () => getWardrobeScreenState(wardrobe, query),
     [query, wardrobe],
   );
 
@@ -148,11 +148,7 @@ export default function WardrobeScreen() {
                 </Text>
                 <View style={styles.countWrap}>
                   <Text style={[styles.count, { color: colors.textPrimary }]}>
-                    {loading
-                      ? "…"
-                      : query.trim()
-                        ? filteredWardrobe.length
-                        : wardrobe.length}
+                    {loading ? "…" : displayCount}
                   </Text>
                   <Text
                     style={[styles.countLabel, { color: colors.textSecondary }]}
