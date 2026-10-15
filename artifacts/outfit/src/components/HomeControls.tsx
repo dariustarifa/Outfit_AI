@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   Alert,
@@ -31,6 +31,7 @@ import {
   isProfileTabActive,
   TAB_HIGHLIGHT_HEIGHT,
   TAB_HIGHLIGHT_WIDTH,
+  markTabSwitchStart,
   type TabRouteTarget,
 } from "@/src/tab-navigation";
 import Animated, {
@@ -56,6 +57,7 @@ import {
 import { success, tapLight } from "../haptics";
 import { WardrobeAddSheet } from "./WardrobeAddSheet";
 import { WhiteChip } from "./WhiteChip";
+import { useHomeControlsState } from "@/src/context/HomeControlsContext";
 
 export interface PlanAttachment {
   id: string;
@@ -66,7 +68,7 @@ export interface PlanAttachment {
 }
 
 interface HomeControlsProps {
-  onComposerExpandedChange?: (expanded: boolean) => void;
+  visible?: boolean;
 }
 
 const spring = { damping: 20, stiffness: 220, mass: 1 };
@@ -86,8 +88,9 @@ function makeAttachment(
   };
 }
 
-export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
+function HomeControlsComponent({ visible = true }: HomeControlsProps) {
   const { colors, isDark } = useTheme();
+  const { setPlanComposerOpen } = useHomeControlsState();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const pathname = usePathname();
@@ -159,19 +162,15 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
   const navigateToTab = (target: TabRouteTarget) => {
     const action = getTabNavigationAction(pathname, target);
     if (!action) return;
-
-    if (action.type === "push") {
-      router.push(action.href);
-    } else {
-      router.dismissTo(action.href);
-    }
+    markTabSwitchStart(target);
+    router.replace(action.href as never);
   };
 
   const finishComposerClose = useCallback(() => {
     openStarted.current = false;
     setExpanded(false);
-    onComposerExpandedChange?.(false);
-  }, [onComposerExpandedChange]);
+    setPlanComposerOpen(false);
+  }, [setPlanComposerOpen]);
 
   const closeComposer = useCallback(() => {
     if (closeStarted.current) return;
@@ -193,7 +192,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
     void tapLight();
     closeStarted.current = false;
     setExpanded(true);
-    onComposerExpandedChange?.(true);
+    setPlanComposerOpen(true);
   };
 
   useEffect(() => {
@@ -397,7 +396,10 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
   const canSend = Boolean(text.trim()) || attachments.length > 0;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View
+      style={[StyleSheet.absoluteFill, !visible && styles.hidden]}
+      pointerEvents={visible ? "box-none" : "none"}
+    >
       <Animated.View
         pointerEvents={expanded ? "auto" : "none"}
         style={[
@@ -684,7 +686,12 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
   );
 }
 
+export const HomeControls = memo(HomeControlsComponent);
+
 const styles = StyleSheet.create({
+  hidden: {
+    display: "none",
+  },
   dim: {
     zIndex: 1,
   },

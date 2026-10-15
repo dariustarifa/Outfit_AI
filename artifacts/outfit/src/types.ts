@@ -50,6 +50,7 @@ export type ProfileUpdate = Partial<
 export interface WardrobeItem {
   id: string;
   imageUri: string;
+  thumbUri?: string;
   note: string;
   createdAt: number;
 }

@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
-  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -28,6 +28,8 @@ import { useApp } from "@/src/context/AppContext";
 import type { WardrobeItem } from "@/src/types";
 import { searchWardrobeItems } from "@/src/wardrobe-search";
 import { selection, success } from "@/src/haptics";
+import { PopTrigger } from "@/src/components/PopTrigger";
+import { WardrobeItemEditor } from "./item";
 
 export default function WardrobeScreen() {
   const { colors, isDark } = useTheme();
@@ -99,69 +101,9 @@ export default function WardrobeScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: WardrobeItem }) => (
-      <View style={styles.itemColumn}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Editar prenda: ${item.note || "sin nota"}`}
-          testID={`wardrobe-item-${item.id}`}
-          onPress={() => openItem(item.id)}
-          style={({ pressed }) => [
-            styles.itemPressable,
-            pressed && styles.pressed,
-          ]}
-        >
-          <View
-            style={[
-              styles.photoFrame,
-              {
-                borderRadius: nativeLayout.cardRadius,
-                borderColor: colors.glassBorder,
-                backgroundColor: colors.muted,
-              },
-            ]}
-          >
-            <Image source={{ uri: item.imageUri }} style={styles.photo} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Eliminar prenda"
-              testID={`delete-item-${item.id}`}
-              hitSlop={8}
-              onPress={() => {
-                void selection();
-                confirmRemove(item);
-              }}
-              style={styles.deleteButton}
-            >
-              <GlassView
-                borderRadius={nativeLayout.pillRadius}
-                style={styles.iconGlass}
-              >
-                <Trash2 size={17} color={colors.foreground} />
-              </GlassView>
-            </Pressable>
-            <View
-              style={[styles.editHint, { backgroundColor: colors.primaryBg }]}
-            >
-              <ArrowUpRight size={16} color={colors.onPrimary} />
-            </View>
-          </View>
-          <Text
-            numberOfLines={2}
-            style={[styles.itemNote, { color: colors.foreground }]}
-          >
-            {item.note.trim() || "Sin nota"}
-          </Text>
-        </Pressable>
-      </View>
+      <WardrobeGridCell item={item} confirmRemove={confirmRemove} />
     ),
-    [
-      colors.foreground,
-      colors.muted,
-      colors.primary,
-      colors.onPrimary,
-      confirmRemove,
-      openItem,
-    ],
+    [confirmRemove],
   );
 
   return (
@@ -368,6 +310,92 @@ export default function WardrobeScreen() {
     </View>
   );
 }
+
+const WardrobeGridCell = memo(function WardrobeGridCell({
+  item,
+  confirmRemove,
+}: {
+  item: WardrobeItem;
+  confirmRemove: (item: WardrobeItem) => void;
+}) {
+  const { colors } = useTheme();
+  const image = item.thumbUri ?? item.imageUri;
+  const content = useCallback(
+    (close: () => void, glassReady: boolean) => (
+      <WardrobeItemEditor
+        id={item.id}
+        onClose={close}
+        popup
+        glassReady={glassReady}
+      />
+    ),
+    [item.id],
+  );
+
+  return (
+    <View style={styles.itemColumn}>
+      <PopTrigger
+        id={item.id}
+        image={image}
+        fullImage={item.imageUri}
+        radius={nativeLayout.cardRadius}
+        size="card"
+        content={content}
+        style={styles.itemPressable}
+        pressedStyle={styles.pressed}
+        accessibilityLabel={`Editar prenda: ${item.note || "sin nota"}`}
+        testID={`wardrobe-item-${item.id}`}
+      >
+        <View
+          style={[
+            styles.photoFrame,
+            {
+              borderRadius: nativeLayout.cardRadius,
+              borderColor: colors.glassBorder,
+              backgroundColor: colors.muted,
+            },
+          ]}
+        >
+          <Image
+            source={{ uri: image }}
+            style={styles.photo}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Eliminar prenda"
+            testID={`delete-item-${item.id}`}
+            hitSlop={8}
+            onPress={() => {
+              void selection();
+              confirmRemove(item);
+            }}
+            style={styles.deleteButton}
+          >
+            <GlassView
+              borderRadius={nativeLayout.pillRadius}
+              style={styles.iconGlass}
+            >
+              <Trash2 size={17} color={colors.foreground} />
+            </GlassView>
+          </Pressable>
+          <View
+            style={[styles.editHint, { backgroundColor: colors.primaryBg }]}
+          >
+            <ArrowUpRight size={16} color={colors.onPrimary} />
+          </View>
+        </View>
+        <Text
+          numberOfLines={2}
+          style={[styles.itemNote, { color: colors.foreground }]}
+        >
+          {item.note.trim() || "Sin nota"}
+        </Text>
+      </PopTrigger>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },

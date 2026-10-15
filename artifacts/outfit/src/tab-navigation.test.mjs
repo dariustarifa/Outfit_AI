@@ -8,54 +8,43 @@ import {
 
 function applyAction(stack, action) {
   if (!action) return;
-
-  if (action.type === "push") {
-    stack.push(action.href);
-    return;
-  }
-
-  const existingRouteIndex = stack.lastIndexOf(action.href);
-  if (existingRouteIndex >= 0) {
-    stack.splice(existingRouteIndex + 1);
-  } else {
-    stack[stack.length - 1] = action.href;
-  }
+  if (stack.length === 0) stack.push(action.href);
+  else stack[stack.length - 1] = action.href;
 }
 
-test("Perfil opens above Inicio and the back action restores the Inicio tab", () => {
-  const stack = ["/"];
-  const profileAction = getTabNavigationAction("/", "profile");
+test("tab switches replace the current route instead of building a back stack", () => {
+  const stack = ["/home"];
+  const profileAction = getTabNavigationAction("/home", "profile");
 
-  assert.deepEqual(profileAction, { type: "push", href: "/profile" });
+  assert.deepEqual(profileAction, { type: "replace", href: "/profile-tab" });
   applyAction(stack, profileAction);
-  assert.deepEqual(stack, ["/", "/profile"]);
+  assert.deepEqual(stack, ["/profile-tab"]);
   assert.equal(isProfileTabActive(stack.at(-1)), true);
-
-  stack.pop();
-
-  assert.equal(stack.at(-1), "/");
-  assert.equal(isProfileTabActive(stack.at(-1)), false);
+  assert.deepEqual(getTabNavigationAction("/profile-tab", "home"), {
+    type: "replace",
+    href: "/home",
+  });
 });
 
-test("switching tabs repeatedly dismisses to the existing Inicio route", () => {
-  const stack = ["/"];
+test("switching tabs repeatedly keeps a single active route", () => {
+  const stack = ["/home"];
 
   for (let index = 0; index < 5; index += 1) {
     applyAction(stack, getTabNavigationAction(stack.at(-1), "profile"));
     applyAction(stack, getTabNavigationAction(stack.at(-1), "home"));
   }
 
-  assert.deepEqual(stack, ["/"]);
+  assert.deepEqual(stack, ["/home"]);
   applyAction(stack, getTabNavigationAction(stack.at(-1), "profile"));
-  assert.deepEqual(stack, ["/", "/profile"]);
+  assert.deepEqual(stack, ["/profile-tab"]);
 });
 
 test("Perfil as the only route falls back to Inicio without adding a duplicate", () => {
-  const stack = ["/profile"];
+  const stack = ["/profile-tab"];
 
   applyAction(stack, getTabNavigationAction(stack.at(-1), "home"));
 
-  assert.deepEqual(stack, ["/"]);
+  assert.deepEqual(stack, ["/home"]);
 });
 
 test("the 92 × 48 highlight stays centered within each tab on compact screens", () => {

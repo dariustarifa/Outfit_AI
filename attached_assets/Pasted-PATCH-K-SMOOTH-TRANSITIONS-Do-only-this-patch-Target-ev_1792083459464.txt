@@ -1,0 +1,55 @@
+PATCH K — SMOOTH TRANSITIONS. Do only this patch. Target: every transition runs at 60 fps with no stutter. Judge it on the real iPhone.
+
+PROBLEMS
+1. Tapping a card or a photo opens its detail with a slow fade that looks like 3 fps.
+2. Switching between Profile and Home became slow.
+Likely causes: opening by navigating to a new screen with a "fade" while blur views and big images load; animations running on the JS thread; full-size photos decoded during the animation; heavy content mounting mid-transition. The new approach below uses an overlay, so nothing heavy mounts during the animation.
+
+PART 1 — "POP" TRANSITION (new component)
+Create src/components/PopHost.tsx and a context hook usePop() with open(options) and close().
+- PopHost is rendered ONCE inside RootShell in app/_layout.tsx, above the Stack and above the tab bar: position absolute, top/left/right/bottom 0, zIndex 200. When nothing is open it renders nothing.
+- open({ id, rect, radius, size, image, content }):
+    rect = { x, y, width, height } of the tapped element in window coordinates, measured with ref.current.measureInWindow(...) at the moment of the press.
+    radius = border radius of the tapped element.
+    size = "card" (width = screenWidth - 48, height = min(screenHeight * 0.72, 560), centered vertically) or "large" (left and right 16, top insets.top + 16, bottom insets.bottom + 16).
+    image = the uri of the tapped thumbnail (item.thumbUri ?? item.imageUri).
+    content = a React element with the detail (it receives a close function).
+- If the rect cannot be measured, use a rect that is 80% of the target size, centered.
+- Animation (react-native-reanimated, UI thread, ONE shared value "progress"):
+    container left, top, width, height, borderRadius = interpolate(progress, [0, 1], [origin, target], Extrapolation.EXTEND), so the overshoot of the spring creates the natural bounce.
+    Open: progress.value = withSpring(1, { damping: 18, stiffness: 260, mass: 1 }).
+    Close: progress.value = withSpring(0, { damping: 28, stiffness: 320, mass: 1 }, (finished) => { if (finished) runOnJS(unmount)(); }).
+    Backdrop: a plain View with backgroundColor colors.backdrop and opacity = interpolate(progress, [0, 1], [0, 1], Extrapolation.CLAMP). NO BlurView in the backdrop.
+    The container shows the thumbnail (expo-image, contentFit "cover") filling it from the first frame. The detail content is mounted on the first frame with opacity 0 and fades in between progress 0.55 and 0.9. The thumbnail fades out between progress 0.7 and 1.
+    While it moves, the container background is a plain colors.bgTop surface (NO BlurView and NO glass on the moving container). Glass inside the content is rendered only after the animation ends (set a state once, from runOnJS, when progress reaches 0.95).
+- The original thumbnail gets opacity 0 while its pop is open (the context exposes activeId).
+- Close with: tap on the backdrop, swipe down (Gesture.Pan, translationY > 90 or velocityY > 900), or the close function that content receives.
+- Haptic: tapLight() when it opens. None on close.
+- No setState during animation frames. No console.log inside the animation code.
+
+PART 2 — APPLY THE POP IN THESE PLACES
+Search the code for every place where tapping a thumbnail or card shows a bigger version, whether by navigation, Modal or sheet, and replace it with usePop().open:
+ a) The outfit recommendation card on the Home screen (find it): size "large". Content = the same outfit detail that opens now.
+ b) The wardrobe screen ("armario"): every garment thumbnail or item that opens a larger view or editor: size "card".
+ c) The garment photos in the Profile grid: size "card". Content = the same garment detail as now (large photo, note field, "Guardar", "Eliminar prenda"). This replaces the bottom sheet for garments only. The "+" bottom sheet stays as it is.
+Keep the same content, buttons and logic. Only the way it opens and closes changes. Remove the "fade" animations used for these openings.
+
+PART 3 — FAST SWITCH BETWEEN HOME AND PROFILE
+ a) The tab bar is rendered ONCE in RootShell (persistent), never inside each screen. The marker slides with the spring and must not remount.
+ b) Home and Profile stay mounted after the first visit: use expo-router Tabs with lazy: false and freezeOnBlur: true, with tabBar rendering nothing (the persistent bar in RootShell does the job). If the installed version does not allow it, keep the Stack and use router.replace between the two routes. In both cases the transition animation is "none" for these two routes.
+ c) Each of the two screens fades its content in over 140 ms when it gains focus (Reanimated FadeIn.duration(140) or an opacity shared value). No slide, no scale.
+ d) Home must not call the weather API every time it gains focus. Fetch only if the last fetch is older than 10 minutes, or when the app returns to the foreground.
+ e) Profile performance: the wardrobe grid is a FlatList (numColumns 3) with the sections above it in ListHeaderComponent. Cells are React.memo. Use initialNumToRender 12, windowSize 5 and removeClippedSubviews. Cell images use thumbUri with expo-image.
+ f) Memoize GlassView and the tab bar (React.memo) and the context values (useMemo), so a tab switch does not re-render them.
+ g) In dev, log "[perf] tab switch: X ms" from the tab press until the first frame of the destination screen. Target: under 200 ms.
+
+PART 4 — PERFORMANCE HYGIENE
+ - Run npx expo install expo-image and use it for ALL garment and body photos (cachePolicy "memory-disk"). When a thumbnail is pressed in, prefetch the full-size image with Image.prefetch(uri).
+ - Any use of the react-native Animated API must have useNativeDriver: true. Prefer Reanimated.
+ - No blur is animated or created during a transition.
+ - If a transition still stutters, set shouldRasterizeIOS={true} on the moving container only while it moves, and tell me.
+
+DONE WHEN
+ - Tapping the home recommendation, a wardrobe item or a profile photo makes it pop out of its place with a small natural bounce, and closing it returns it to its place. No fade.
+ - Home <-> Profile switches feel instant and the marker slides smoothly.
+Reply with: files changed, the "[perf] tab switch" number, and what still stutters, if anything.

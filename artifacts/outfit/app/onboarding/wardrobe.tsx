@@ -4,7 +4,6 @@ import {
   AppState,
   Alert,
   Dimensions,
-  Image,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import Animated, {
@@ -396,7 +396,8 @@ export default function WardrobeOnboardingScreen() {
                 <Image
                   source={{ uri: photoUri }}
                   style={styles.previewImage}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
                   accessibilityLabel="Vista previa de la prenda"
                 />
               </GlassView>

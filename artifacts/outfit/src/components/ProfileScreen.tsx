@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   Alert,
-  Dimensions,
-  Image,
+  FlatList,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +12,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import {
   CalendarDays,
@@ -41,6 +42,7 @@ import {
   GenderOptionCard,
 } from "./GenderOptionCard";
 import { WhiteChip } from "./WhiteChip";
+import { PopTrigger } from "./PopTrigger";
 
 const appearanceOptions: { value: ThemeMode; label: string }[] = [
   { value: "light", label: "Claro" },
@@ -61,10 +63,7 @@ type EditableField =
   | "heightCm"
   | "city"
   | "bodyPhotoUri";
-type ActiveSheet =
-  | { kind: "profile"; field: EditableField }
-  | { kind: "garment"; itemId: string }
-  | null;
+type ActiveSheet = { kind: "profile"; field: EditableField } | null;
 
 interface ProfileForm {
   name: string;
@@ -137,6 +136,216 @@ function fieldTitle(field: EditableField): string {
   }
 }
 
+const ProfileGarmentCell = memo(function ProfileGarmentCell({
+  item,
+  cellSize,
+}: {
+  item: WardrobeItem;
+  cellSize: number;
+}) {
+  const { colors } = useTheme();
+  const image = item.thumbUri ?? item.imageUri;
+  const content = useCallback(
+    (close: () => void, glassReady: boolean) => (
+      <ProfileGarmentDetail
+        item={item}
+        close={close}
+        glassReady={glassReady}
+      />
+    ),
+    [item],
+  );
+
+  return (
+    <PopTrigger
+      id={item.id}
+      image={image}
+      fullImage={item.imageUri}
+      radius={nativeLayout.cardRadius}
+      size="card"
+      content={content}
+      style={[
+        styles.wardrobeCell,
+        {
+          width: cellSize,
+          height: cellSize,
+          backgroundColor: colors.muted,
+        },
+      ]}
+      pressedStyle={styles.pressed}
+      accessibilityLabel={`Abrir prenda: ${item.note.trim() || "sin nota"}`}
+      testID={`wardrobe-item-cell-${item.id}`}
+    >
+      <Image
+        source={{ uri: image }}
+        style={styles.wardrobeImage}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        accessibilityLabel={item.note || "Prenda del armario"}
+      />
+    </PopTrigger>
+  );
+});
+
+function ProfileGarmentDetail({
+  item,
+  close,
+  glassReady,
+}: {
+  item: WardrobeItem;
+  close: () => void;
+  glassReady: boolean;
+}) {
+  const { colors } = useTheme();
+  const { updateItem, removeItem } = useApp();
+  const { height } = useWindowDimensions();
+  const [note, setNote] = useState(item.note);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await updateItem(item.id, { note });
+      await success();
+      close();
+    } catch {
+      setError("No se pudo guardar la nota. Inténtalo de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  }, [close, item.id, note, saving, updateItem]);
+
+  const remove = useCallback(async () => {
+    try {
+      await removeItem(item.id);
+      await success();
+      close();
+    } catch {
+      setError("No se pudo eliminar la prenda. Inténtalo de nuevo.");
+    }
+  }, [close, item.id, removeItem]);
+
+  const confirmRemove = useCallback(() => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm("¿Eliminar esta prenda?")) void remove();
+      return;
+    }
+    Alert.alert("¿Eliminar esta prenda?", undefined, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Eliminar", style: "destructive", onPress: () => void remove() },
+    ]);
+  }, [remove]);
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.popDetailFill}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.popDetailContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.popDetailHeader}>
+          <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+            Tu prenda
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar prenda"
+            testID="close-wardrobe-item-sheet"
+            onPress={close}
+            style={styles.popDetailClose}
+          >
+            {glassReady ? (
+              <GlassView
+                borderRadius={nativeLayout.pillRadius}
+                style={styles.popDetailCloseSurface}
+              >
+                <X size={20} color={colors.textSecondary} />
+              </GlassView>
+            ) : (
+              <View
+                style={[
+                  styles.popDetailCloseSurface,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
+                <X size={20} color={colors.textSecondary} />
+              </View>
+            )}
+          </Pressable>
+        </View>
+        <Image
+          source={{ uri: item.imageUri }}
+          style={[
+            styles.garmentPhoto,
+            { height: Math.min(height * 0.34, 320) },
+          ]}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          accessibilityLabel="Foto de la prenda"
+        />
+        <ProfileInput
+          label="NOTA"
+          value={note}
+          placeholder="Añade una nota"
+          accessibilityLabel="Nota de la prenda"
+          testID="wardrobe-item-note"
+          onChangeText={setNote}
+          multiline
+          colors={colors}
+        />
+        {error ? (
+          <Text accessibilityRole="alert" style={[styles.errorText, { color: colors.danger }]}>
+            {error}
+          </Text>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          testID="wardrobe-item-save-note"
+          disabled={saving}
+          onPress={() => void save()}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            { backgroundColor: colors.primaryBg },
+            saving && styles.disabledButton,
+            pressed && !saving && styles.pressed,
+          ]}
+        >
+          <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>
+            {saving ? "Guardando…" : "Guardar"}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          testID="delete-wardrobe-item"
+          disabled={saving}
+          onPress={confirmRemove}
+          style={({ pressed }) => [
+            styles.deleteButton,
+            pressed && styles.pressed,
+            saving && styles.disabledButton,
+          ]}
+        >
+          <Trash2 size={16} color={colors.danger} />
+          <Text style={[styles.deleteButtonText, { color: colors.danger }]}>
+            Eliminar prenda
+          </Text>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const WardrobeRowSeparator = memo(function WardrobeRowSeparator() {
+  return <View style={styles.wardrobeRowSeparator} />;
+});
+
 function ProfileInput({
   label,
   value,
@@ -204,13 +413,10 @@ export function ProfileScreen() {
   const { glassLevel, setGlassLevel } = useSettings();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const screenHeight = Dimensions.get("screen").height;
   const {
     profile,
     wardrobe,
     updateProfile,
-    updateItem,
-    removeItem,
   } = useApp();
   const [form, setForm] = useState<ProfileForm>(() =>
     profile ? formFromProfile(profile) : emptyForm(),
@@ -223,10 +429,7 @@ export function ProfileScreen() {
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [sheetLayerActive, setSheetLayerActive] = useState(false);
   const [message, setMessage] = useState("");
-  const [itemNote, setItemNote] = useState("");
-  const [itemError, setItemError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [savingItem, setSavingItem] = useState(false);
   const [cameraPermission, requestCameraPermission] =
     ImagePicker.useCameraPermissions();
   const [mediaPermission, requestMediaPermission] =
@@ -234,11 +437,6 @@ export function ProfileScreen() {
 
   const editingCity =
     activeSheet?.kind === "profile" && activeSheet.field === "city";
-  const selectedItem = useMemo<WardrobeItem | null>(() => {
-    if (activeSheet?.kind !== "garment") return null;
-    return wardrobe.find((item) => item.id === activeSheet.itemId) ?? null;
-  }, [activeSheet, wardrobe]);
-
   useEffect(() => {
     const query = form.city.trim();
     if (
@@ -298,16 +496,8 @@ export function ProfileScreen() {
     setActiveSheet({ kind: "profile", field });
   };
 
-  const openGarmentSheet = (item: WardrobeItem) => {
-    void selection();
-    setSheetLayerActive(true);
-    setItemNote(item.note);
-    setItemError("");
-    setActiveSheet({ kind: "garment", itemId: item.id });
-  };
-
   const closeSheet = () => {
-    if (saving || savingItem) return;
+    if (saving) return;
     if (profile) {
       setForm(formFromProfile(profile));
       setSelectedCity(cityFromProfile(profile));
@@ -315,7 +505,6 @@ export function ProfileScreen() {
     setCityResults([]);
     setSearchState("idle");
     setMessage("");
-    setItemError("");
     setActiveSheet(null);
   };
 
@@ -446,50 +635,6 @@ export function ProfileScreen() {
     }
   };
 
-  const saveGarmentNote = async () => {
-    if (!selectedItem || savingItem) return;
-    setSavingItem(true);
-    setItemError("");
-    try {
-      await updateItem(selectedItem.id, { note: itemNote });
-      await success();
-      setActiveSheet(null);
-    } catch {
-      setItemError("No se pudo guardar la nota. Inténtalo de nuevo.");
-    } finally {
-      setSavingItem(false);
-    }
-  };
-
-  const removeSelectedItem = async () => {
-    if (!selectedItem) return;
-    try {
-      await removeItem(selectedItem.id);
-      await success();
-      setActiveSheet(null);
-    } catch {
-      setItemError("No se pudo eliminar la prenda. Inténtalo de nuevo.");
-    }
-  };
-
-  const askToRemoveSelectedItem = () => {
-    if (!selectedItem) return;
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm("¿Eliminar esta prenda?")) {
-        void removeSelectedItem();
-      }
-      return;
-    }
-    Alert.alert("¿Eliminar esta prenda?", undefined, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: () => void removeSelectedItem(),
-      },
-    ]);
-  };
-
   if (!profile) return null;
 
   const cellSize =
@@ -544,6 +689,12 @@ export function ProfileScreen() {
     activeSheet?.kind === "profile" ? activeSheet.field : null;
   const isProfileSaveDisabled =
     saving || (activeField === "gender" && !form.gender);
+  const renderWardrobeItem = useCallback(
+    ({ item }: { item: WardrobeItem }) => (
+      <ProfileGarmentCell item={item} cellSize={cellSize} />
+    ),
+    [cellSize],
+  );
 
   return (
     <View
@@ -552,9 +703,18 @@ export function ProfileScreen() {
         sheetLayerActive && styles.sheetLayer,
       ]}
     >
-      <ScrollView
+      <FlatList
         style={styles.fill}
         testID="profile-screen"
+        data={wardrobe}
+        keyExtractor={(item) => item.id}
+        numColumns={3}
+        renderItem={renderWardrobeItem}
+        columnWrapperStyle={styles.wardrobeGrid}
+        ItemSeparatorComponent={WardrobeRowSeparator}
+        initialNumToRender={12}
+        windowSize={5}
+        removeClippedSubviews
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={[
           styles.content,
@@ -573,250 +733,239 @@ export function ProfileScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
         showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Perfil</Text>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          Mis datos
-        </Text>
-        <GlassView
-          style={[
-            styles.dataCard,
-            { borderColor: colors.glassBorder },
-          ]}
-        >
-          {profileRows.map((row, index) => (
-            <Pressable
-              key={row.field}
-              accessibilityRole="button"
-              accessibilityLabel={`${row.label}: ${row.value}. Toca para editar.`}
-              testID={`profile-data-${row.field}`}
-              onPress={() => openProfileEditor(row.field)}
+        ListHeaderComponent={
+          <View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              Perfil
+            </Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              Mis datos
+            </Text>
+            <GlassView
               style={[
-                styles.profileRow,
-                index < profileRows.length - 1 && {
-                  borderBottomColor: colors.border,
-                  borderBottomWidth: StyleSheet.hairlineWidth,
-                },
+                styles.dataCard,
+                { borderColor: colors.glassBorder },
               ]}
             >
-              {row.field === "bodyPhotoUri" && profile.bodyPhotoUri ? (
-                <Image
-                  source={{ uri: profile.bodyPhotoUri }}
-                  style={[
-                    styles.profilePhotoThumb,
-                    { backgroundColor: colors.muted },
-                  ]}
-                  resizeMode="cover"
-                  accessibilityLabel="Foto de cuerpo entero"
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.rowIcon,
-                    { backgroundColor: colors.muted },
-                  ]}
-                >
-                  {row.icon}
-                </View>
-              )}
-              <View style={styles.rowCopy}>
-                <Text
-                  style={[styles.rowLabel, { color: colors.textPrimary }]}
-                >
-                  {row.label}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.rowValue, { color: colors.textSecondary }]}
-                >
-                  {row.value}
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colors.textSecondary} />
-            </Pressable>
-          ))}
-        </GlassView>
-
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          Apariencia
-        </Text>
-        <GlassView style={styles.appearanceCard}>
-          <View style={styles.appearanceControl}>
-            {appearanceOptions.map((option) => {
-              const selected = mode === option.value;
-              return (
+              {profileRows.map((row, index) => (
                 <Pressable
-                  key={option.value}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  accessibilityLabel={option.label}
-                  testID={`appearance-${option.value}`}
-                  onPress={() => {
-                    void selection();
-                    void setMode(option.value).catch(() => {
-                      Alert.alert(
-                        "No se pudo guardar",
-                        "No se pudo guardar tu preferencia de apariencia. Inténtalo de nuevo.",
-                      );
-                    });
-                  }}
-                  style={({ pressed }) => [
-                    styles.appearanceOption,
-                    pressed && styles.pressed,
+                  key={row.field}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${row.label}: ${row.value}. Toca para editar.`}
+                  testID={`profile-data-${row.field}`}
+                  onPress={() => openProfileEditor(row.field)}
+                  style={[
+                    styles.profileRow,
+                    index < profileRows.length - 1 && {
+                      borderBottomColor: colors.border,
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                    },
                   ]}
                 >
-                  {selected ? (
-                    <WhiteChip style={styles.appearanceSelected}>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.appearanceLabel,
-                          { color: colors.onChip },
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </WhiteChip>
-                  ) : (
-                    <Text
-                      numberOfLines={1}
+                  {row.field === "bodyPhotoUri" && profile.bodyPhotoUri ? (
+                    <Image
+                      source={{ uri: profile.bodyPhotoUri }}
                       style={[
-                        styles.appearanceLabel,
-                        { color: colors.textSecondary },
+                        styles.profilePhotoThumb,
+                        { backgroundColor: colors.muted },
+                      ]}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      accessibilityLabel="Foto de cuerpo entero"
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.rowIcon,
+                        { backgroundColor: colors.muted },
                       ]}
                     >
-                      {option.label}
-                    </Text>
+                      {row.icon}
+                    </View>
                   )}
+                  <View style={styles.rowCopy}>
+                    <Text
+                      style={[styles.rowLabel, { color: colors.textPrimary }]}
+                    >
+                      {row.label}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.rowValue, { color: colors.textSecondary }]}
+                    >
+                      {row.value}
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color={colors.textSecondary} />
                 </Pressable>
-              );
-            })}
-          </View>
-          <View style={styles.glassLevelControl}>
-            <View style={styles.glassLevelOptions}>
-              {glassLevelOptions.map((option) => {
-                const selected = glassLevel === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    accessibilityLabel={option.label}
-                    testID={`glass-level-${option.value}`}
-                    onPress={() => {
-                      void selection();
-                      void setGlassLevel(option.value).catch(() => {
-                        Alert.alert(
-                          "No se pudo guardar",
-                          "No se pudo guardar tu preferencia de cristal. Inténtalo de nuevo.",
-                        );
-                      });
-                    }}
-                    style={({ pressed }) => [
-                      styles.glassLevelOption,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    {selected ? (
-                      <WhiteChip style={styles.glassLevelSelected}>
+              ))}
+            </GlassView>
+
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              Apariencia
+            </Text>
+            <GlassView style={styles.appearanceCard}>
+              <View style={styles.appearanceControl}>
+                {appearanceOptions.map((option) => {
+                  const selected = mode === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected }}
+                      accessibilityLabel={option.label}
+                      testID={`appearance-${option.value}`}
+                      onPress={() => {
+                        void selection();
+                        void setMode(option.value).catch(() => {
+                          Alert.alert(
+                            "No se pudo guardar",
+                            "No se pudo guardar tu preferencia de apariencia. Inténtalo de nuevo.",
+                          );
+                        });
+                      }}
+                      style={({ pressed }) => [
+                        styles.appearanceOption,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      {selected ? (
+                        <WhiteChip style={styles.appearanceSelected}>
+                          <Text
+                            numberOfLines={1}
+                            style={[
+                              styles.appearanceLabel,
+                              { color: colors.onChip },
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </WhiteChip>
+                      ) : (
                         <Text
                           numberOfLines={1}
                           style={[
-                            styles.glassLevelLabel,
-                            { color: colors.onChip },
+                            styles.appearanceLabel,
+                            { color: colors.textSecondary },
                           ]}
                         >
                           {option.label}
                         </Text>
-                      </WhiteChip>
-                    ) : (
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.glassLevelLabel,
-                          { color: colors.textMuted },
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={styles.glassLevelControl}>
+                <View style={styles.glassLevelOptions}>
+                  {glassLevelOptions.map((option) => {
+                    const selected = glassLevel === option.value;
+                    return (
+                      <Pressable
+                        key={option.value}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: selected }}
+                        accessibilityLabel={option.label}
+                        testID={`glass-level-${option.value}`}
+                        onPress={() => {
+                          void selection();
+                          void setGlassLevel(option.value).catch(() => {
+                            Alert.alert(
+                              "No se pudo guardar",
+                              "No se pudo guardar tu preferencia de cristal. Inténtalo de nuevo.",
+                            );
+                          });
+                        }}
+                        style={({ pressed }) => [
+                          styles.glassLevelOption,
+                          pressed && styles.pressed,
                         ]}
                       >
-                        {option.label}
-                      </Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={[styles.glassLevelCaption, { color: colors.textMuted }]}>
-              Cristalino deja ver el fondo; Mate es más opaco y difuminado.
-            </Text>
-            <View
-              style={[
-                styles.glassPreviewBackdrop,
-                { backgroundColor: colors.blobA },
-              ]}
-            >
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.glassPreviewStrip,
-                  { backgroundColor: colors.blobB },
-                ]}
-              />
-              <GlassView
-                borderRadius={28}
-                edge
-                shadow={false}
-                style={styles.glassPreview}
-              >
+                        {selected ? (
+                          <WhiteChip style={styles.glassLevelSelected}>
+                            <Text
+                              numberOfLines={1}
+                              style={[
+                                styles.glassLevelLabel,
+                                { color: colors.onChip },
+                              ]}
+                            >
+                              {option.label}
+                            </Text>
+                          </WhiteChip>
+                        ) : (
+                          <Text
+                            numberOfLines={1}
+                            style={[
+                              styles.glassLevelLabel,
+                              { color: colors.textMuted },
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
                 <Text
                   style={[
-                    styles.glassPreviewText,
-                    { color: colors.text },
+                    styles.glassLevelCaption,
+                    { color: colors.textMuted },
                   ]}
                 >
-                  Vista previa
+                  Cristalino deja ver el fondo; Mate es más opaco y difuminado.
                 </Text>
-              </GlassView>
-            </View>
-          </View>
-        </GlassView>
+                <View
+                  style={[
+                    styles.glassPreviewBackdrop,
+                    { backgroundColor: colors.blobA },
+                  ]}
+                >
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.glassPreviewStrip,
+                      { backgroundColor: colors.blobB },
+                    ]}
+                  />
+                  <GlassView
+                    borderRadius={28}
+                    edge
+                    shadow={false}
+                    style={styles.glassPreview}
+                  >
+                    <Text
+                      style={[
+                        styles.glassPreviewText,
+                        { color: colors.text },
+                      ]}
+                    >
+                      Vista previa
+                    </Text>
+                  </GlassView>
+                </View>
+              </View>
+            </GlassView>
 
-        <Text style={[styles.sectionTitle, styles.wardrobeTitle, { color: colors.textPrimary }]}>
-          Mi armario · {wardrobe.length}{" "}
-          {wardrobe.length === 1 ? "prenda" : "prendas"}
-        </Text>
-        {wardrobe.length === 0 ? (
+            <Text
+              style={[
+                styles.sectionTitle,
+                styles.wardrobeTitle,
+                { color: colors.textPrimary },
+              ]}
+            >
+              Mi armario · {wardrobe.length}{" "}
+              {wardrobe.length === 1 ? "prenda" : "prendas"}
+            </Text>
+          </View>
+        }
+        ListEmptyComponent={
           <Text style={[styles.emptyCopy, { color: colors.textSecondary }]}>
             Todavía no hay prendas. Pulsa + para añadir la primera.
           </Text>
-        ) : (
-          <View style={styles.wardrobeGrid}>
-            {wardrobe.map((item) => (
-              <Pressable
-                key={item.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Abrir prenda: ${item.note.trim() || "sin nota"}`}
-                testID={`wardrobe-item-cell-${item.id}`}
-                onPress={() => openGarmentSheet(item)}
-                style={({ pressed }) => [
-                  styles.wardrobeCell,
-                  {
-                    width: cellSize,
-                    height: cellSize,
-                    backgroundColor: colors.muted,
-                  },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Image
-                  source={{ uri: item.imageUri }}
-                  style={styles.wardrobeImage}
-                  resizeMode="cover"
-                  accessibilityLabel={item.note || "Prenda del armario"}
-                />
-              </Pressable>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+        }
+      />
 
       <BottomSheet
         visible={activeSheet !== null}
@@ -1022,7 +1171,8 @@ export function ProfileScreen() {
                                 styles.profilePhotoPreview,
                                 { backgroundColor: colors.muted },
                               ]}
-                              resizeMode="contain"
+                              contentFit="contain"
+                              cachePolicy="memory-disk"
                               accessibilityLabel="Foto de cuerpo entero"
                             />
                           ) : null}
@@ -1100,100 +1250,6 @@ export function ProfileScreen() {
                           ]}
                         >
                           {saving ? "Guardando…" : "Guardar"}
-                        </Text>
-                      </Pressable>
-                    </>
-                  ) : selectedItem ? (
-                    <>
-                      <View style={styles.sheetHeader}>
-                        <Text
-                          style={[
-                            styles.sheetTitle,
-                            { color: colors.textPrimary },
-                          ]}
-                        >
-                          Tu prenda
-                        </Text>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Cerrar prenda"
-                          testID="close-wardrobe-item-sheet"
-                          onPress={closeSheet}
-                          style={styles.closeButton}
-                        >
-                          <X size={20} color={colors.textSecondary} />
-                        </Pressable>
-                      </View>
-                      <Image
-                        source={{ uri: selectedItem.imageUri }}
-                        style={[
-                          styles.garmentPhoto,
-                          { height: Math.min(screenHeight * 0.34, 320) },
-                        ]}
-                        resizeMode="contain"
-                        accessibilityLabel="Foto de la prenda"
-                      />
-                      <ProfileInput
-                        label="NOTA"
-                        value={itemNote}
-                        placeholder="Añade una nota"
-                        accessibilityLabel="Nota de la prenda"
-                        testID="wardrobe-item-note"
-                        onChangeText={setItemNote}
-                        multiline
-                        colors={colors}
-                      />
-                      {itemError ? (
-                        <Text
-                          accessibilityRole="alert"
-                          style={[
-                            styles.errorText,
-                            { color: colors.danger },
-                          ]}
-                        >
-                          {itemError}
-                        </Text>
-                      ) : null}
-                      <Pressable
-                        accessibilityRole="button"
-                        testID="wardrobe-item-save-note"
-                        disabled={savingItem}
-                        onPress={() => void saveGarmentNote()}
-                        style={({ pressed }) => [
-                          styles.primaryButton,
-                          { backgroundColor: colors.primaryBg },
-                          savingItem && styles.disabledButton,
-                          pressed && !savingItem && styles.pressed,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.primaryButtonText,
-                            { color: colors.onPrimary },
-                          ]}
-                        >
-                          {savingItem ? "Guardando…" : "Guardar"}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        testID="delete-wardrobe-item"
-                        disabled={savingItem}
-                        onPress={askToRemoveSelectedItem}
-                        style={({ pressed }) => [
-                          styles.deleteButton,
-                          pressed && styles.pressed,
-                          savingItem && styles.disabledButton,
-                        ]}
-                      >
-                        <Trash2 size={16} color={colors.danger} />
-                        <Text
-                          style={[
-                            styles.deleteButtonText,
-                            { color: colors.danger },
-                          ]}
-                        >
-                          Eliminar prenda
                         </Text>
                       </Pressable>
                     </>
@@ -1337,14 +1393,39 @@ const styles = StyleSheet.create({
   wardrobeTitle: { marginBottom: nativeLayout.baseSpacing * 3 },
   wardrobeGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: nativeLayout.baseSpacing * 2,
   },
+  wardrobeRowSeparator: { height: nativeLayout.baseSpacing * 2 },
   wardrobeCell: {
     borderRadius: nativeLayout.baseSpacing * 4,
     overflow: "hidden",
   },
   wardrobeImage: { width: "100%", height: "100%" },
+  popDetailFill: { flex: 1 },
+  popDetailContent: {
+    flexGrow: 1,
+    padding: nativeLayout.screenHorizontalPadding,
+    gap: nativeLayout.baseSpacing * 3,
+  },
+  popDetailHeader: {
+    minHeight: nativeLayout.primaryButtonHeight,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  popDetailClose: {
+    width: 40,
+    height: 40,
+    borderRadius: nativeLayout.pillRadius,
+    overflow: "hidden",
+  },
+  popDetailCloseSurface: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   emptyCopy: {
     fontFamily: "Satoshi_400Regular",
     fontSize: 15,

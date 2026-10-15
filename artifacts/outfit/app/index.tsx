@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,25 +9,29 @@ import {
   Text,
   View,
 } from "react-native";
-import { Redirect, router } from "expo-router";
+import { Image } from "expo-image";
+import { Redirect, router, useIsFocused } from "expo-router";
 import { ArrowRight, CloudSun, Plus, Shirt } from "lucide-react-native";
 import Animated, {
-  Easing,
-  FadeInDown,
-  SlideInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
-import { HomeControls } from "@/src/components/HomeControls";
+import { PopTrigger } from "@/src/components/PopTrigger";
+import { WardrobeItemEditor } from "./item";
 import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
+import { useHomeControlsState } from "@/src/context/HomeControlsContext";
 import { fetchWeather } from "@/src/services/weather";
 import { getHomeWeatherText, refreshWeatherForProfile } from "@/src/services/home-weather";
 import { recommendDailyOutfit } from "@/src/services/daily-recommendation";
 import { useTheme } from "@/src/theme";
 import { selection } from "@/src/haptics";
 import { getStartupScreen } from "@/src/onboarding-progress";
+import type { WardrobeItem } from "@/src/types";
 
 function formatClock(date: Date): string {
   return new Intl.DateTimeFormat("es-ES", {
@@ -48,17 +51,30 @@ function formatDate(date: Date): string {
     .toUpperCase();
 }
 
-export default function HomeScreen() {
+export function HomeScreen() {
   const { colors } = useTheme();
+  const isFocused = useIsFocused();
+  const focusProgress = useSharedValue(0);
+  const focusStyle = useAnimatedStyle(() => ({
+    opacity: focusProgress.value,
+  }));
   const insets = useSafeAreaInsets();
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
   const startupScreen = getStartupScreen(loading, profile);
-  const [planComposerOpen, setPlanComposerOpen] = useState(false);
+  const { planComposerOpen } = useHomeControlsState();
+  const lastWeatherRefreshAt = useRef(0);
+  const lastWeatherLocation = useRef("");
   const [clockDate, setClockDate] = useState(() => new Date());
   const dailyItems = useMemo(
     () => recommendDailyOutfit(wardrobe, clockDate, weather),
     [clockDate, wardrobe, weather],
   );
+
+  useEffect(() => {
+    if (!isFocused) return;
+    focusProgress.value = 0;
+    focusProgress.value = withTiming(1, { duration: 140 });
+  }, [focusProgress, isFocused]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -78,9 +94,24 @@ export default function HomeScreen() {
     if (loading || !profile?.onboardingCompleted) return;
     let mounted = true;
     let requestInFlight = false;
-    const refreshWeather = async () => {
+    const locationKey = [
+      profile.city,
+      profile.latitude ?? "",
+      profile.longitude ?? "",
+    ].join(":");
+    if (!lastWeatherLocation.current) {
+      lastWeatherLocation.current = locationKey;
+    }
+    const refreshWeather = async (force = false) => {
+      const now = Date.now();
+      const locationChanged = lastWeatherLocation.current !== locationKey;
+      const stale = !weather || now - weather.updatedAt >= 10 * 60 * 1000;
+      const recentAttempt = now - lastWeatherRefreshAt.current < 10 * 60 * 1000;
+      if (!force && !locationChanged && (!stale || recentAttempt)) return;
       if (requestInFlight) return;
       requestInFlight = true;
+      lastWeatherRefreshAt.current = now;
+      lastWeatherLocation.current = locationKey;
       try {
         await refreshWeatherForProfile(profile, fetchWeather, async (snapshot) => {
           if (mounted) await setWeather(snapshot);
@@ -94,9 +125,9 @@ export default function HomeScreen() {
 
     void refreshWeather();
     const appState = AppState.addEventListener("change", (state) => {
-      if (state === "active") void refreshWeather();
+      if (state === "active") void refreshWeather(true);
     });
-    const interval = setInterval(() => void refreshWeather(), 30 * 60 * 1000);
+    const interval = setInterval(() => void refreshWeather(), 10 * 60 * 1000);
 
     return () => {
       mounted = false;
@@ -108,6 +139,7 @@ export default function HomeScreen() {
     profile?.latitude,
     profile?.longitude,
     profile?.onboardingCompleted,
+    profile?.city,
     setWeather,
   ]);
 
@@ -164,7 +196,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.fill}>
+    <Animated.View style={[styles.fill, focusStyle]}>
       <KeyboardAvoidingView
         style={styles.fill}
         behavior={
@@ -192,14 +224,10 @@ export default function HomeScreen() {
                 showsVerticalScrollIndicator={false}
                 scrollIndicatorInsets={{ right: 1 }}
               >
-                <Animated.Text
-                  entering={FadeInDown.duration(250)}
-                  style={[styles.date, { color: colors.textSecondary }]}
-                >
+                <Animated.Text style={[styles.date, { color: colors.textSecondary }]}>
                   {formatDate(clockDate)}
                 </Animated.Text>
                 <Animated.Text
-                  entering={FadeInDown.duration(250).delay(70)}
                   numberOfLines={2}
                   adjustsFontSizeToFit
                   minimumFontScale={0.7}
@@ -207,10 +235,7 @@ export default function HomeScreen() {
                 >
                   Hola, {displayName}
                 </Animated.Text>
-                <Animated.View
-                  entering={FadeInDown.duration(250).delay(130)}
-                  style={styles.weatherRow}
-                >
+                <Animated.View style={styles.weatherRow}>
                   <CloudSun size={17} color={colors.textSecondary} strokeWidth={1.7} />
                   <Text
                     numberOfLines={1}
@@ -220,12 +245,7 @@ export default function HomeScreen() {
                   </Text>
                 </Animated.View>
 
-                <Animated.View
-                  entering={SlideInDown.duration(320)
-                    .easing(Easing.out(Easing.cubic))
-                    .delay(190)}
-                  style={styles.recommendationSection}
-                >
+                <Animated.View style={styles.recommendationSection}>
                   <View style={styles.sectionHeading}>
                     <View>
                       <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
@@ -254,51 +274,14 @@ export default function HomeScreen() {
                           {dailyItems.items.map(({ item, reason }, index) => (
                             <Animated.View
                               key={item.id}
-                              entering={FadeInDown.duration(360)
-                                .delay(index * 60)
-                                .easing(Easing.out(Easing.cubic))}
                               style={styles.outfitItemMotion}
                             >
-                              <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel={`Editar prenda: ${item.note.trim() || "sin nota"}`}
+                              <HomeRecommendationItem
+                                item={item}
+                                reason={reason}
+                                single={dailyItems.items.length === 1}
                                 testID={`recommended-item-${index + 1}`}
-                                onPress={() => {
-                                  void selection();
-                                  router.push({ pathname: "/item", params: { id: item.id } });
-                                }}
-                                style={({ pressed }) => [
-                                  styles.outfitItem,
-                                  dailyItems.items.length === 1 && styles.singleOutfitItem,
-                                  pressed && styles.pressed,
-                                ]}
-                              >
-                                <View
-                                  style={[
-                                    styles.photoFrame,
-                                    {
-                                      borderRadius: nativeLayout.cardRadius,
-                                      backgroundColor: colors.muted,
-                                    },
-                                  ]}
-                                >
-                                  <Image
-                                    source={{ uri: item.imageUri }}
-                                    style={styles.photo}
-                                    resizeMode="cover"
-                                    accessibilityLabel={item.note.trim() || "Prenda guardada"}
-                                  />
-                                </View>
-                                <Text
-                                  numberOfLines={2}
-                                  style={[styles.itemNote, { color: colors.textPrimary }]}
-                                >
-                                  {item.note.trim() || "Una pieza de tu armario"}
-                                </Text>
-                                <Text style={[styles.itemReason, { color: colors.textSecondary }]}>
-                                  {reason}
-                                </Text>
-                              </Pressable>
+                              />
                             </Animated.View>
                           ))}
                         </View>
@@ -366,14 +349,83 @@ export default function HomeScreen() {
                   )}
                 </Animated.View>
               </ScrollView>
-          <HomeControls
-            onComposerExpandedChange={setPlanComposerOpen}
-          />
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </Animated.View>
   );
 }
+
+export default function IndexRoute() {
+  return <Redirect href="/home" />;
+}
+
+const HomeRecommendationItem = memo(function HomeRecommendationItem({
+  item,
+  reason,
+  single,
+  testID,
+}: {
+  item: WardrobeItem;
+  reason: string;
+  single: boolean;
+  testID: string;
+}) {
+  const { colors } = useTheme();
+  const image = item.thumbUri ?? item.imageUri;
+  const content = useCallback(
+    (close: () => void, glassReady: boolean) => (
+      <WardrobeItemEditor
+        id={item.id}
+        onClose={close}
+        popup
+        glassReady={glassReady}
+      />
+    ),
+    [item.id],
+  );
+
+  return (
+    <PopTrigger
+      id={item.id}
+      image={image}
+      fullImage={item.imageUri}
+      radius={nativeLayout.cardRadius}
+      size="large"
+      content={content}
+      style={[styles.outfitItem, single && styles.singleOutfitItem]}
+      pressedStyle={styles.pressed}
+      accessibilityLabel={`Editar prenda: ${item.note.trim() || "sin nota"}`}
+      testID={testID}
+    >
+      <View
+        style={[
+          styles.photoFrame,
+          {
+            borderRadius: nativeLayout.cardRadius,
+            backgroundColor: colors.muted,
+          },
+        ]}
+      >
+        <Image
+          source={{ uri: image }}
+          style={styles.photo}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          accessibilityLabel={item.note.trim() || "Prenda guardada"}
+        />
+      </View>
+      <Text
+        numberOfLines={2}
+        style={[styles.itemNote, { color: colors.textPrimary }]}
+      >
+        {item.note.trim() || "Una pieza de tu armario"}
+      </Text>
+      <Text style={[styles.itemReason, { color: colors.textSecondary }]}>
+        {reason}
+      </Text>
+    </PopTrigger>
+  );
+});
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import Animated, {
   FadeInDown,
@@ -804,7 +804,8 @@ export default function ProgressiveOnboardingScreen() {
                       <Image
                         source={{ uri: form.bodyPhotoUri }}
                         style={styles.photo}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
                         accessibilityLabel="Foto de cuerpo entero seleccionada"
                       />
                     </View>

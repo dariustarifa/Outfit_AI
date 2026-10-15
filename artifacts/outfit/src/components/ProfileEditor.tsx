@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import {
   Camera,
@@ -402,7 +402,8 @@ export function ProfileEditor() {
                 <Image
                   source={{ uri: form.bodyPhotoUri }}
                   style={styles.photo}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
                   accessibilityLabel="Foto de perfil"
                 />
               </View>

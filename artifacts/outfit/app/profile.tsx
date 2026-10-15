@@ -1,27 +1,17 @@
 import { Redirect } from "expo-router";
-import { StyleSheet, View } from "react-native";
-import { HomeControls } from "@/src/components/HomeControls";
 import { ProfileScreen } from "@/src/components/ProfileScreen";
 import { useApp } from "@/src/context/AppContext";
 import { getStartupScreen } from "@/src/onboarding-progress";
 
 export default function ProfileRoute() {
+  return <Redirect href="/profile-tab" />;
+}
+
+export function ProfileTabsScreen() {
   const { loading, profile } = useApp();
   const startupScreen = getStartupScreen(loading, profile);
 
-  if (startupScreen !== "home") return <Redirect href="/" />;
+  if (startupScreen !== "home") return <Redirect href="/home" />;
 
-  return (
-    <View style={styles.screen}>
-      <ProfileScreen />
-      <HomeControls />
-    </View>
-  );
+  return <ProfileScreen />;
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    position: "relative",
-  },
-});

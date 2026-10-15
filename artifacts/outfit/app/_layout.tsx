@@ -11,13 +11,17 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/src/context/AppContext";
+import { HomeControlsProvider } from "@/src/context/HomeControlsContext";
 import { SettingsProvider } from "@/src/context/SettingsContext";
+import { HomeControls } from "@/src/components/HomeControls";
+import { PopHost, PopProvider } from "@/src/components/PopHost";
 import { ThemeProvider, useTheme } from "@/src/theme";
+import { useApp } from "@/src/context/AppContext";
 import { useFonts } from "expo-font";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import * as SystemUI from "expo-system-ui";
@@ -91,13 +95,26 @@ function RootShellContent({
       </GradientBackground>
       <ErrorBoundary>
         <AppProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: "transparent" },
-              animation: "fade",
-            }}
-          />
+          <HomeControlsProvider>
+            <PopProvider>
+              <View style={styles.fill}>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "transparent" },
+                    animation: "fade",
+                  }}
+                >
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ animation: "none" }}
+                  />
+                </Stack>
+                <PersistentHomeControls />
+                <PopHost />
+              </View>
+            </PopProvider>
+          </HomeControlsProvider>
         </AppProvider>
       </ErrorBoundary>
       {__DEV__ ? (
@@ -124,6 +141,17 @@ function RootShellContent({
       ) : null}
     </>
   );
+}
+
+function PersistentHomeControls() {
+  const pathname = usePathname();
+  const { loading, profile } = useApp();
+  const visible =
+    !loading &&
+    Boolean(profile?.onboardingCompleted) &&
+    (pathname === "/home" || pathname === "/profile-tab");
+
+  return <HomeControls visible={visible} />;
 }
 
 const styles = StyleSheet.create({

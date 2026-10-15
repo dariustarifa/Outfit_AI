@@ -14,11 +14,10 @@ export function getTabHighlightLayout(tabSlotWidth: number) {
 }
 
 export type TabNavigationAction =
-  | { type: "push"; href: "/profile" }
-  | { type: "dismissTo"; href: "/" };
+  | { type: "replace"; href: "/profile-tab" | "/home" };
 
 export function isProfileTabActive(pathname: string): boolean {
-  return pathname === "/profile";
+  return pathname === "/profile-tab" || pathname === "/profile";
 }
 
 export function getTabNavigationAction(
@@ -28,12 +27,29 @@ export function getTabNavigationAction(
   const isProfile = isProfileTabActive(pathname);
 
   if (target === "profile" && !isProfile) {
-    return { type: "push", href: "/profile" };
+    return { type: "replace", href: "/profile-tab" };
   }
 
   if (target === "home" && isProfile) {
-    return { type: "dismissTo", href: "/" };
+    return { type: "replace", href: "/home" };
   }
 
   return null;
+}
+
+let pendingTabSwitch: { target: TabRouteTarget; startedAt: number } | null =
+  null;
+
+export function markTabSwitchStart(target: TabRouteTarget) {
+  pendingTabSwitch = { target, startedAt: Date.now() };
+}
+
+export function markTabSwitchFirstFrame(target: TabRouteTarget) {
+  if (pendingTabSwitch?.target !== target) return;
+  requestAnimationFrame(() => {
+    const pending = pendingTabSwitch;
+    if (pending?.target !== target) return;
+    console.info(`[perf] tab switch: ${Date.now() - pending.startedAt} ms`);
+    pendingTabSwitch = null;
+  });
 }

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   AppState,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -29,19 +29,39 @@ import { useApp } from "@/src/context/AppContext";
 import { selection, success } from "@/src/haptics";
 
 export default function WardrobeItemScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  return <WardrobeItemEditor id={id} onClose={() => router.back()} />;
+}
+
+export function WardrobeItemEditor({
+  id,
+  onClose,
+  popup = false,
+  glassReady = true,
+}: {
+  id?: string;
+  onClose?: () => void;
+  popup?: boolean;
+  glassReady?: boolean;
+}) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id?: string }>();
   const { wardrobe, loading, addItem, updateItem, removeItem } = useApp();
   const existingItem = id ? wardrobe.find((item) => item.id === id) : undefined;
-  const [note, setNote] = useState("");
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [formReady, setFormReady] = useState(!id);
+  const [note, setNote] = useState(existingItem?.note ?? "");
+  const [photoUri, setPhotoUri] = useState<string | null>(
+    existingItem?.imageUri ?? null,
+  );
+  const [formReady, setFormReady] = useState(!id || Boolean(existingItem));
   const [saving, setSaving] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [mediaPermission, requestMediaPermission, getMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
+  const dismiss = useCallback(() => {
+    if (onClose) onClose();
+    else router.back();
+  }, [onClose]);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -129,13 +149,13 @@ export default function WardrobeItemScreen() {
         await addItem({ imageUri: photoUri, note: note.trim() });
       }
       await success();
-      router.back();
+      dismiss();
     } catch {
       setMessage("No se pudo guardar la prenda. Comprueba el espacio disponible e inténtalo de nuevo.");
     } finally {
       setSaving(false);
     }
-  }, [addItem, existingItem, id, note, photoUri, saving, updateItem]);
+  }, [addItem, dismiss, existingItem, id, note, photoUri, saving, updateItem]);
 
   const remove = useCallback(() => {
     if (!id || !existingItem) return;
@@ -144,7 +164,7 @@ export default function WardrobeItemScreen() {
       try {
         await removeItem(id);
         await success();
-        router.back();
+        dismiss();
       } catch {
         setMessage("No se pudo eliminar la prenda. Inténtalo de nuevo.");
       }
@@ -161,7 +181,7 @@ export default function WardrobeItemScreen() {
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar", style: "destructive", onPress: () => void runRemove() },
     ]);
-  }, [existingItem, id, removeItem]);
+  }, [dismiss, existingItem, id, removeItem]);
 
   if (id && (loading || !formReady)) {
     return (
@@ -193,7 +213,7 @@ export default function WardrobeItemScreen() {
           <Text style={[styles.errorTitle, { color: colors.textPrimary }]}>
             No encontramos esta prenda
           </Text>
-          <Pressable onPress={() => router.back()} style={styles.textButton}>
+          <Pressable onPress={dismiss} style={styles.textButton}>
             <Text style={[styles.textButtonLabel, { color: colors.primary }]}>
               Volver al armario
             </Text>
@@ -229,7 +249,7 @@ export default function WardrobeItemScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Volver"
                 testID="back-to-wardrobe"
-                onPress={() => router.back()}
+                onPress={dismiss}
                 hitSlop={10}
                 style={styles.backButton}
               >
@@ -264,6 +284,8 @@ export default function WardrobeItemScreen() {
                 <Image
                   source={{ uri: photoUri }}
                   style={styles.previewImage}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
                   accessibilityLabel="Foto seleccionada de la prenda"
                 />
                 <Pressable
@@ -276,9 +298,15 @@ export default function WardrobeItemScreen() {
                   }}
                   style={styles.clearPhotoButton}
                 >
-                  <GlassView borderRadius={nativeLayout.pillRadius} style={styles.clearPhotoGlass}>
-                    <X size={18} color={colors.foreground} />
-                  </GlassView>
+                  {popup && !glassReady ? (
+                    <View style={styles.clearPhotoGlass}>
+                      <X size={18} color={colors.foreground} />
+                    </View>
+                  ) : (
+                    <GlassView borderRadius={nativeLayout.pillRadius} style={styles.clearPhotoGlass}>
+                      <X size={18} color={colors.foreground} />
+                    </GlassView>
+                  )}
                 </Pressable>
               </View>
             ) : (
@@ -648,7 +676,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "transparent",
   },
-  previewImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  previewImage: { width: "100%", height: "100%" },
   clearPhotoButton: { position: "absolute", top: 10, right: 10 },
   clearPhotoGlass: {
     width: 40,

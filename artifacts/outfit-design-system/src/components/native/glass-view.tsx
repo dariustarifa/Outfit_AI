@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import {
   Platform,
   StyleSheet,
@@ -31,7 +31,7 @@ export type GlassViewProps = {
   testID?: string;
 };
 
-export function GlassView({
+export const GlassView = memo(function GlassView({
   children,
   borderRadius = nativeLayout.cardRadius,
   colorScheme: colorSchemeOverride,
@@ -141,7 +141,7 @@ export function GlassView({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   outer: {

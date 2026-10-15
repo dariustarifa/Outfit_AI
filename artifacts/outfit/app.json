@@ -35,7 +35,8 @@
           "cameraPermission": "Permite que Outfit use la cámara para fotografiar tus prendas.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
