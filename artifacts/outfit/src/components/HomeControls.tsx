@@ -315,7 +315,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
       borderRadius: interpolate(
         progress.value,
         [0, 1],
-        [radius.control, radius.panel],
+        [BAR_HEIGHT / 2, radius.panel],
       ),
     };
   });

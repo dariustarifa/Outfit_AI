@@ -16,8 +16,10 @@ import {
   nativeTheme,
 } from "@workspace/outfit-design-system/lib/native-theme";
 import { setColorSchemeOverride } from "@workspace/outfit-design-system/hooks/use-colors";
+import { setGlassEffectLevel as setDesignSystemGlassEffectLevel } from "@workspace/outfit-design-system/hooks/use-glass-effect";
 import {
   colorSchemeForMode,
+  loadGlassEffectLevel,
   loadThemeMode,
   persistThemeMode,
   type ThemeMode,
@@ -51,18 +53,26 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    loadThemeMode(AsyncStorage)
-      .then((initialMode) => {
-        applyAppearanceMode(initialMode);
-        if (active) {
-          setModeState(initialMode);
-          setReady(true);
-        }
+    const modePromise = loadThemeMode(AsyncStorage).catch((error: unknown) => {
+      console.error("Unable to load the saved appearance mode.", error);
+      return "system" as const;
+    });
+    void modePromise.then((initialMode) => {
+      applyAppearanceMode(initialMode);
+      if (active) {
+        setModeState(initialMode);
+        setReady(true);
+      }
+    });
+    void loadGlassEffectLevel(
+      AsyncStorage,
+      nativeEffects.glass.defaultIntensity,
+    )
+      .then((initialGlassLevel) => {
+        setDesignSystemGlassEffectLevel(initialGlassLevel);
       })
       .catch((error: unknown) => {
-        console.error("Unable to load the saved appearance mode.", error);
-        applyAppearanceMode("system");
-        if (active) setReady(true);
+        console.error("Unable to load the saved glass effect.", error);
       });
 
     return () => {
@@ -108,7 +118,7 @@ export const BAR_HEIGHT = 64;
 export const BAR_WIDTH = (screenWidth: number) => screenWidth - 40;
 
 export const radius = {
-  control: 28,
+  control: nativeLayout.pillRadius,
   panel: 32,
   field: 20,
   thumb: 14,

@@ -66,9 +66,16 @@ export const nativeLayout = {
 
 export const nativeEffects = {
   glass: {
-    blurIntensity: 14,
-    gradientStart: "rgba(255,255,255,0.18)",
-    gradientEnd: "rgba(255,255,255,0.03)",
+    defaultIntensity: 0.25,
+    liquidBlurIntensity: 4,
+    frostedBlurIntensity: 44,
+    liquidGradientStart: "rgba(255,255,255,0.1)",
+    frostedGradientStart: "rgba(255,255,255,0.42)",
+    liquidGradientEnd: "rgba(255,255,255,0.005)",
+    frostedGradientEnd: "rgba(255,255,255,0.105)",
+    nativeFrostedThreshold: 0.5,
+    nativeTintMaxOpacity: 0.18,
+    transitionDurationSeconds: 0.24,
     highlightStart: "rgba(255,255,255,0.9)",
     highlightEnd: "rgba(255,255,255,0)",
     shadowOpacity: 0.06,

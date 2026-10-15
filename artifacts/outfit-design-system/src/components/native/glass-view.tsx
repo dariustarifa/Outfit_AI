@@ -3,7 +3,6 @@ import {
   Platform,
   StyleSheet,
   View,
-  useColorScheme,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -13,7 +12,11 @@ import {
   GlassView as NativeGlass,
   isLiquidGlassAvailable,
 } from "expo-glass-effect";
-import { useColors } from "../../hooks/use-colors";
+import {
+  useColors,
+  useDesignColorScheme,
+} from "../../hooks/use-colors";
+import { useGlassEffectLevel } from "../../hooks/use-glass-effect";
 import { nativeEffects, nativeLayout } from "../../lib/native-theme";
 
 export type GlassViewProps = {
@@ -30,13 +33,40 @@ export function GlassView({
   testID,
 }: GlassViewProps) {
   const colors = useColors();
-  const isDark = useColorScheme() === "dark";
+  const colorScheme = useDesignColorScheme();
+  const isDark = colorScheme === "dark";
+  const effectLevel = useGlassEffectLevel();
   const glass = nativeEffects.glass;
+  const blurIntensity = interpolate(
+    glass.liquidBlurIntensity,
+    glass.frostedBlurIntensity,
+    effectLevel,
+  );
+  const gradientStart = interpolateRgbaAlpha(
+    glass.liquidGradientStart,
+    glass.frostedGradientStart,
+    effectLevel,
+  );
+  const gradientEnd = interpolateRgbaAlpha(
+    glass.liquidGradientEnd,
+    glass.frostedGradientEnd,
+    effectLevel,
+  );
   if (Platform.OS === "ios" && isLiquidGlassAvailable()) {
     return (
       <NativeGlass
         testID={testID}
-        glassEffectStyle="clear"
+        glassEffectStyle={{
+          style:
+            effectLevel >= glass.nativeFrostedThreshold ? "regular" : "clear",
+          animate: true,
+          animationDuration: glass.transitionDurationSeconds,
+        }}
+        colorScheme={isDark ? "dark" : "light"}
+        tintColor={rgbaFromHex(
+          colors.backgroundTop,
+          glass.nativeTintMaxOpacity * effectLevel,
+        )}
         style={[style, { borderRadius, overflow: "hidden" }]}
       >
         {children}
@@ -67,15 +97,15 @@ export function GlassView({
       >
         <BlurView
           pointerEvents="none"
-          intensity={glass.blurIntensity}
+          intensity={blurIntensity}
           tint={isDark ? "dark" : "light"}
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
           pointerEvents="none"
           colors={[
-            isDark ? halfAlpha(glass.gradientStart) : glass.gradientStart,
-            isDark ? halfAlpha(glass.gradientEnd) : glass.gradientEnd,
+            isDark ? halfAlpha(gradientStart) : gradientStart,
+            isDark ? halfAlpha(gradientEnd) : gradientEnd,
           ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -107,6 +137,31 @@ export function GlassView({
       </View>
     </View>
   );
+}
+
+function interpolate(start: number, end: number, progress: number) {
+  return start + (end - start) * progress;
+}
+
+function interpolateRgbaAlpha(
+  startColor: string,
+  endColor: string,
+  progress: number,
+) {
+  const startAlpha = Number.parseFloat(startColor.match(/[\d.]+\)$/)?.[0] ?? "0");
+  const endAlpha = Number.parseFloat(endColor.match(/[\d.]+\)$/)?.[0] ?? "0");
+  return startColor.replace(
+    /[\d.]+\)$/,
+    `${interpolate(startAlpha, endAlpha, progress)})`,
+  );
+}
+
+function rgbaFromHex(hex: string, alpha: number) {
+  const value = hex.replace("#", "");
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+  return `rgba(${red},${green},${blue},${alpha})`;
 }
 
 function halfAlpha(color: string): string {

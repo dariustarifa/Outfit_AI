@@ -1,0 +1,35 @@
+PATCH G — LIGHT AND DARK MODE. Do only this patch. Do not change layout, texts or animation.
+
+1) THEME SYSTEM
+- Convert theme.ts into two palettes: lightColors and darkColors (values in section 2). Create a ThemeProvider and a hook useTheme() that returns { colors, isDark, mode, setMode }.
+- mode is "light" | "dark" | "system". Default "system". Save it in AsyncStorage (key "themeMode") and load it before rendering screens.
+- When mode changes, call Appearance.setColorScheme(null | "light" | "dark") from react-native (null = follow the system). This makes native elements (keyboard, native glass, alerts) follow the choice.
+- app.json: change "userInterfaceStyle" from "light" to "automatic". Without this, dark mode does NOT work on iOS.
+- StatusBar style: "dark" in light mode, "light" in dark mode.
+- Every component must use useTheme().colors. Search the whole code for imports of the old static colors and for hard-coded hex or rgba colors, and replace them with tokens. Exceptions: rgba(0,0,0,x) backdrops, and the camera screen, which stays dark in both modes.
+- Changing the mode updates every screen instantly, with a 250 ms cross-fade of the background. No restart needed.
+
+2) PALETTES
+lightColors (these are the colors of my design):
+  backgroundTop #F4F1EA, backgroundBottom #D3CCC5, textPrimary #2E2D30, textSecondary #6E6A65, gold #B19B63, iconInactive #6E6A65, blobSand #E5D8C8, blobGold #D6C39C
+  glassBorder rgba(255,255,255,0.75), fieldBg rgba(255,255,255,0.5), fieldBorder rgba(255,255,255,0.7), danger #A33A3A
+  chipBg / chipBorder = the values WhiteChip uses now
+darkColors:
+  backgroundTop #232120, backgroundBottom #171512, textPrimary #F4F1EA, textSecondary #A8A29A, gold #C9B27A, iconInactive #A8A29A, blobSand #55463A, blobGold #6A5530
+  glassBorder rgba(255,255,255,0.22), fieldBg rgba(255,255,255,0.08), fieldBorder rgba(255,255,255,0.18), danger #E57373
+  chipBg rgba(255,255,255,0.18), chipBorder rgba(255,255,255,0.28)
+WhiteChip must read chipBg and chipBorder from the theme.
+Primary button: background = textPrimary, text = backgroundTop (it inverts automatically).
+
+3) GLASS IN DARK MODE
+- GlassView fallback: BlurView tint "dark" in dark mode and "light" in light mode (not "default").
+- The white overlay of the fallback uses half of the alpha values in dark mode.
+- NativeGlass (iOS 26): nothing to change, it follows Appearance.
+
+4) UI
+- In Profile add a section "Apariencia" ABOVE "Mi armario", with a segmented control of three options: "Claro", "Oscuro", "Automático". The selected option uses WhiteChip. On tap: selection() haptic, then setMode.
+
+DONE WHEN
+- I can switch Claro / Oscuro / Automático in Profile, and every screen (home, onboarding, profile, sheets, plan panel, recommendation) changes correctly with no white or black leftovers.
+- The choice is remembered after closing the app.
+Reply with: files changed, and any screen where you were not sure.

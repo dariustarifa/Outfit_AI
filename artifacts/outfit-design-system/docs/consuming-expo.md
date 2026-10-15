@@ -36,12 +36,20 @@ Import the shared mobile primitives directly:
 ```tsx
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
+import {
+  setGlassEffectLevel,
+  useGlassEffectLevel,
+} from "@workspace/outfit-design-system/hooks/use-glass-effect";
 ```
 
 Keep product data, navigation, and screen composition in Expo. Metro resolves
 the workspace package through pnpm symlinks. Do not copy source or token values.
 Loose binary assets may still need copying into Expo because Metro does not
 watch sibling artifact folders by default.
+
+`useGlassEffectLevel()` reads the shared Liquid-to-Frosted intensity. Use
+`setGlassEffectLevel(value)` to update all native glass surfaces; persist the
+consumer's selected value in its own app storage.
 
 ## Dependencies and assets
 

@@ -12,7 +12,11 @@ import {
 } from "react-native";
 import { Redirect, router } from "expo-router";
 import { ArrowRight, CloudSun, Plus, Shirt } from "lucide-react-native";
-import Animated, { FadeInDown, SlideInDown } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeInDown,
+  SlideInDown,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
@@ -217,7 +221,9 @@ export default function HomeScreen() {
                 </Animated.View>
 
                 <Animated.View
-                  entering={SlideInDown.duration(250).delay(190)}
+                  entering={SlideInDown.duration(320)
+                    .easing(Easing.out(Easing.cubic))
+                    .delay(190)}
                   style={styles.recommendationSection}
                 >
                   <View style={styles.sectionHeading}>
@@ -246,47 +252,54 @@ export default function HomeScreen() {
                         </Text>
                         <View style={styles.outfitItems}>
                           {dailyItems.items.map(({ item, reason }, index) => (
-                            <Pressable
+                            <Animated.View
                               key={item.id}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Editar prenda: ${item.note.trim() || "sin nota"}`}
-                              testID={`recommended-item-${index + 1}`}
-                              onPress={() => {
-                                void selection();
-                                router.push({ pathname: "/item", params: { id: item.id } });
-                              }}
-                              style={({ pressed }) => [
-                                styles.outfitItem,
-                                dailyItems.items.length === 1 && styles.singleOutfitItem,
-                                pressed && styles.pressed,
-                              ]}
+                              entering={FadeInDown.duration(360)
+                                .delay(index * 60)
+                                .easing(Easing.out(Easing.cubic))}
+                              style={styles.outfitItemMotion}
                             >
-                              <View
-                                style={[
-                                  styles.photoFrame,
-                                  {
-                                    borderRadius: nativeLayout.cardRadius,
-                                    backgroundColor: colors.muted,
-                                  },
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel={`Editar prenda: ${item.note.trim() || "sin nota"}`}
+                                testID={`recommended-item-${index + 1}`}
+                                onPress={() => {
+                                  void selection();
+                                  router.push({ pathname: "/item", params: { id: item.id } });
+                                }}
+                                style={({ pressed }) => [
+                                  styles.outfitItem,
+                                  dailyItems.items.length === 1 && styles.singleOutfitItem,
+                                  pressed && styles.pressed,
                                 ]}
                               >
-                                <Image
-                                  source={{ uri: item.imageUri }}
-                                  style={styles.photo}
-                                  resizeMode="cover"
-                                  accessibilityLabel={item.note.trim() || "Prenda guardada"}
-                                />
-                              </View>
-                              <Text
-                                numberOfLines={2}
-                                style={[styles.itemNote, { color: colors.textPrimary }]}
-                              >
-                                {item.note.trim() || "Una pieza de tu armario"}
-                              </Text>
-                              <Text style={[styles.itemReason, { color: colors.textSecondary }]}>
-                                {reason}
-                              </Text>
-                            </Pressable>
+                                <View
+                                  style={[
+                                    styles.photoFrame,
+                                    {
+                                      borderRadius: nativeLayout.cardRadius,
+                                      backgroundColor: colors.muted,
+                                    },
+                                  ]}
+                                >
+                                  <Image
+                                    source={{ uri: item.imageUri }}
+                                    style={styles.photo}
+                                    resizeMode="cover"
+                                    accessibilityLabel={item.note.trim() || "Prenda guardada"}
+                                  />
+                                </View>
+                                <Text
+                                  numberOfLines={2}
+                                  style={[styles.itemNote, { color: colors.textPrimary }]}
+                                >
+                                  {item.note.trim() || "Una pieza de tu armario"}
+                                </Text>
+                                <Text style={[styles.itemReason, { color: colors.textSecondary }]}>
+                                  {reason}
+                                </Text>
+                              </Pressable>
+                            </Animated.View>
                           ))}
                         </View>
                         <View style={[styles.weatherTip, { borderTopColor: colors.border }]}>
@@ -435,6 +448,10 @@ const styles = StyleSheet.create({
   outfitItems: {
     flexDirection: "row",
     gap: nativeLayout.baseSpacing * 3,
+  },
+  outfitItemMotion: {
+    flex: 1,
+    minWidth: 0,
   },
   outfitItem: {
     flex: 1,

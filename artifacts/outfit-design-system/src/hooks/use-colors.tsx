@@ -22,9 +22,16 @@ export function setColorSchemeOverride(scheme: ColorScheme | null) {
   listeners.forEach((listener) => listener());
 }
 
-export function useColors() {
+export function useDesignColorScheme(): ColorScheme | null {
   const systemScheme = useColorScheme();
   const override = useSyncExternalStore(subscribe, getOverride, () => undefined);
-  const scheme = override ?? systemScheme;
+  const selectedScheme = override ?? systemScheme;
+  return selectedScheme === "dark" || selectedScheme === "light"
+    ? selectedScheme
+    : null;
+}
+
+export function useColors() {
+  const scheme = useDesignColorScheme();
   return scheme === "dark" ? nativeTheme.dark : nativeTheme.light;
 }

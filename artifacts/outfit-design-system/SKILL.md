@@ -40,21 +40,24 @@ shopping catalog.
 
 ## Glass surfaces
 
-Use clear, low-to-medium-opacity glass so the background remains visible:
+Keep glass adjustable from a clear, liquid treatment to a softly frosted one.
+The default remains clear and low-opacity so the warm background stays visible:
 
-1. On iOS 26+ when `isLiquidGlassAvailable()` is true, use `expo-glass-effect`
-   with the `clear` style and no overlay on top of the native glass.
-2. Elsewhere, use `expo-blur` at intensity 14 with the default tint.
-3. Overlay a white gradient from 18% opacity at the top-left to 3% at the
-   bottom-right, then a 1 px border in `rgba(255,255,255,0.75)` and a 1 px
-   top-edge highlight fading from 90% opacity to transparent.
+1. On iOS 26+ when `isLiquidGlassAvailable()` is true, use `expo-glass-effect`.
+   The clear end uses `clear`; the frosted end may use `regular`. Pass the
+   selected light/dark scheme and animate native style changes.
+2. Elsewhere, interpolate `expo-blur` intensity and the white gradient between
+   the shared liquid and frosted values. The default intensity maps to the
+   former 14-point blur.
+3. Overlay the interpolated white gradient, then a 1 px token-driven border and
+   a 1 px top-edge highlight fading from 90% opacity to transparent.
 4. Use a black shadow at 6% opacity, radius 20, and vertical offset 6.
 5. Clip fallback content to the supplied border radius. Keep colored blobs
-   visible through the low-blur fallback.
+   visible through the low-blur setting; even at the frosted end, do not create
+   an opaque white or matte card.
 
-Glass is neither frosted nor matte and must not become an opaque white card.
-Keep the colored background behind it; the translucency depends on that color.
-Never animate the opacity of native glass. Hide it by moving it with `translateY`.
+Keep the warm background visible behind glass, especially in dark mode. Never
+animate the opacity of native glass. Hide it by moving it with `translateY`.
 
 ## Controls and layout
 
