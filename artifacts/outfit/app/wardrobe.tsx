@@ -209,7 +209,11 @@ export default function WardrobeScreen() {
                 </Text>
                 <View style={styles.countWrap}>
                   <Text style={[styles.count, { color: colors.textPrimary }]}>
-                    {loading ? "…" : wardrobe.length}
+                    {loading
+                      ? "…"
+                      : query.trim()
+                        ? filteredWardrobe.length
+                        : wardrobe.length}
                   </Text>
                   <Text
                     style={[styles.countLabel, { color: colors.textSecondary }]}
