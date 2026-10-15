@@ -117,6 +117,9 @@ function createTestEnvironment(platform = "ios") {
       currentData = await storage.loadAppData();
       return currentData;
     },
+    getProfile() {
+      return currentData.profile;
+    },
     async seedProfile(profile) {
       await storage.saveAppData({ profile, wardrobe: [] });
       currentData = { profile, wardrobe: [] };
@@ -222,6 +225,41 @@ for (const platform of ["ios", "android"]) {
     assert.equal(getStartupScreen(false, restarted.profile), "home");
   });
 }
+
+test("a failed completed-profile edit keeps the saved profile unchanged and can be retried", async () => {
+  const env = createTestEnvironment();
+  const originalProfile = {
+    name: "Alex",
+    preferredName: "A",
+    gender: "female",
+    age: 30,
+    heightCm: 170,
+    bodyPhotoUri: "",
+    city: "Madrid",
+    latitude: 40.4,
+    longitude: -3.7,
+    photoConsent: true,
+    onboardingCompleted: true,
+  };
+  await env.seedProfile(originalProfile);
+  env.failNextMetadataWrite();
+
+  await assert.rejects(
+    env.updateProfile({ name: "Alex Rivera", age: 34 }),
+    /Metadata persistence failed/,
+  );
+
+  assert.deepEqual(env.getProfile(), originalProfile);
+  assert.deepEqual((await env.reload()).profile, originalProfile);
+
+  const saved = await env.updateProfile({ name: "Alex Rivera", age: 34 });
+  assert.deepEqual(saved, {
+    ...originalProfile,
+    name: "Alex Rivera",
+    age: 34,
+  });
+  assert.deepEqual((await env.reload()).profile, saved);
+});
 
 test("a captured photo is copied into app documents and remains readable after reload", async () => {
   const env = createTestEnvironment();

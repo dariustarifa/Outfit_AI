@@ -440,7 +440,7 @@ export function ProfileScreen() {
       await success();
       setActiveSheet(null);
     } catch {
-      setMessage("No se pudo guardar el perfil. Inténtalo de nuevo.");
+      setMessage("No se guardaron los cambios. Inténtalo de nuevo.");
     } finally {
       setSaving(false);
     }
