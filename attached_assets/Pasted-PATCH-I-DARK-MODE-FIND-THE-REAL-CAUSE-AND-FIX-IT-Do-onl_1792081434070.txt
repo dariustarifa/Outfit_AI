@@ -1,0 +1,40 @@
+PATCH I — DARK MODE: FIND THE REAL CAUSE AND FIX IT. Do only this patch. Do not change layout, texts, features or animation.
+
+SYMPTOM
+Patch G2 did not work: in "Oscuro" mode the beige gradient background stays the same. I want a normal dark mode: a blue-gray background. I cannot see your code from here, so find the cause yourself.
+
+STEP 1 — DIAGNOSE (write the results in NOTES.md under "Dark mode diagnosis")
+Check each item and answer YES or NO:
+ 1. Is <ThemeProvider> the OUTERMOST wrapper in app/_layout.tsx, wrapping GradientBackground, GestureHandlerRootView, the Stack and the tab bar? (If GradientBackground or the root view is rendered outside the provider, it never changes.)
+ 2. Is there a hard-coded background on the root: GestureHandlerRootView, a root View, Stack contentStyle, sceneStyle, or app.json backgroundColor? (for example #F5F2EB, #F4F1EA, #DDD3C7, #D3CCC5)
+ 3. Is there any StyleSheet.create(...) at module level (outside a component) that contains a color? That color is computed once and never changes.
+ 4. Does any file still import the old static colors from theme.ts?
+ 5. Does GradientBackground read its gradient and blob colors from useTheme()?
+ 6. Is `mode` saved, loaded and passed into the context? Does setMode produce a NEW context value (useMemo with [mode, scheme])?
+ 7. Is there any React.memo / useMemo / useCallback that uses colors but does not include them in its dependency list?
+
+STEP 2 — FIX (in this order)
+ a) Delete the old static `colors` export from theme.ts completely (keep only types and non-color constants like radius, BAR_WIDTH, BAR_HEIGHT). Every remaining use becomes a TypeScript error. Fix ALL of them with useTheme().colors until `npx tsc --noEmit` shows no errors.
+ b) In app/_layout.tsx use: <SettingsProvider><ThemeProvider><RootShell/></ThemeProvider></SettingsProvider>. RootShell is an inner component that calls useTheme() and renders: GestureHandlerRootView (backgroundColor = colors.bgBottom) containing GradientBackground, the Stack, the tab bar and the overlays.
+ c) Replace every module-level StyleSheet.create that contains colors with: const styles = useMemo(() => makeStyles(colors), [colors]) inside the component (makeStyles is a function that takes colors). Styles without colors may stay in StyleSheet.create.
+ d) Run npx expo install expo-system-ui and call SystemUI.setBackgroundColorAsync(colors.bgBottom) in a useEffect on [scheme].
+ e) Stack screenOptions contentStyle stays transparent. Remove any other hard-coded background.
+ f) The ThemeProvider context value must be created with useMemo([mode, scheme]) so every consumer re-renders when it changes.
+
+STEP 3 — DARK PALETTE: BLUE-GRAY (replace the old dark values)
+bgTop #222831 | bgBottom #11151B | blobA #33445A | blobB #3D4F6B
+text #EDF0F5 | textMuted #A9B1BD | iconInactive #A9B1BD | gold #D4BC86
+glassBorder rgba(255,255,255,0.22) | chipBg rgba(255,255,255,0.14) | chipBorder rgba(255,255,255,0.26) | onChip #EDF0F5
+fieldBg rgba(255,255,255,0.07) | fieldBorder rgba(255,255,255,0.16) | placeholder #8993A1
+primaryBg #EDF0F5 | onPrimary #151A21 | onGold #151A21 | danger #E57373 | backdrop rgba(0,0,0,0.5)
+NEW token edgeShade: light rgba(0,0,0,0.10) | dark rgba(0,0,0,0.55)
+The light palette stays exactly as in Patch G2. Keep the pairing rules of Patch G2 (every background has its "on" color, and in dark mode the chip is LIGHTER than the screen behind it).
+
+STEP 4 — DEBUG BADGE (dev only)
+Show a tiny badge at the top-right, under the status bar, only when __DEV__ is true: text "{mode} · sys:{systemScheme} · {scheme}" (Satoshi 11, background colors.chipBg, text colors.onChip). Leave it ON for now.
+
+STEP 5 — VERIFY (do not reply until all of these pass)
+ - Switch to "Oscuro": the whole background becomes the dark blue-gray gradient on EVERY screen. Switch to "Claro": the original beige.
+ - Switch to "Automático" and change the iPhone appearance from Control Center: the badge and the colors change immediately.
+ - No hard-coded colors remain outside theme.ts and the camera screen.
+Reply with: which diagnosis items were YES (the real causes), files changed, and what you verified.
