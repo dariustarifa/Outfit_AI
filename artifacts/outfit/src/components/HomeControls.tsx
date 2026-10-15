@@ -26,6 +26,7 @@ import {
   User,
   X,
 } from "lucide-react-native";
+import { router, usePathname } from "expo-router";
 import Animated, {
   Easing,
   Extrapolation,
@@ -42,12 +43,13 @@ import { GlassView } from "@workspace/outfit-design-system/components/native/gla
 import {
   BAR_HEIGHT,
   BAR_WIDTH,
-  nativeEffects,
   nativeLayout,
+  radius,
   useColors,
 } from "../theme";
 import { success, tapLight } from "../haptics";
 import { WardrobeAddSheet } from "./WardrobeAddSheet";
+import { WhiteChip } from "./WhiteChip";
 
 export interface PlanAttachment {
   id: string;
@@ -57,12 +59,8 @@ export interface PlanAttachment {
   kind: "image" | "file";
 }
 
-type Screen = "home" | "profile";
-
 interface HomeControlsProps {
-  screen: Screen;
-  onScreenChange: (screen: Screen) => void;
-  onComposerExpandedChange: (expanded: boolean) => void;
+  onComposerExpandedChange?: (expanded: boolean) => void;
 }
 
 const spring = { damping: 20, stiffness: 220, mass: 1 };
@@ -82,14 +80,12 @@ function makeAttachment(
   };
 }
 
-export function HomeControls({
-  screen,
-  onScreenChange,
-  onComposerExpandedChange,
-}: HomeControlsProps) {
+export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const pathname = usePathname();
+  const isProfile = pathname === "/profile";
   const keyboard = useAnimatedKeyboard();
   const barWidth = BAR_WIDTH(width);
   const tabSlotWidth = barWidth / 3;
@@ -105,7 +101,7 @@ export function HomeControls({
   const toastOffset = useSharedValue(Dimensions.get("screen").height);
   const progress = useSharedValue(0);
   const expandedHeight = useSharedValue(160);
-  const activeTabProgress = useSharedValue(screen === "profile" ? 1 : 0);
+  const activeTabProgress = useSharedValue(isProfile ? 1 : 0);
   const pressScale = useSharedValue(1);
   const closeStarted = useRef(false);
   const openStarted = useRef(false);
@@ -135,10 +131,10 @@ export function HomeControls({
 
   useEffect(() => {
     activeTabProgress.value = withSpring(
-      screen === "profile" ? 1 : 0,
+      isProfile ? 1 : 0,
       spring,
     );
-  }, [activeTabProgress, screen]);
+  }, [activeTabProgress, isProfile]);
 
   useEffect(
     () => () => {
@@ -156,7 +152,7 @@ export function HomeControls({
   const finishComposerClose = useCallback(() => {
     openStarted.current = false;
     setExpanded(false);
-    onComposerExpandedChange(false);
+    onComposerExpandedChange?.(false);
   }, [onComposerExpandedChange]);
 
   const closeComposer = useCallback(() => {
@@ -179,7 +175,7 @@ export function HomeControls({
     void tapLight();
     closeStarted.current = false;
     setExpanded(true);
-    onComposerExpandedChange(true);
+    onComposerExpandedChange?.(true);
   };
 
   useEffect(() => {
@@ -316,7 +312,11 @@ export function HomeControls({
         [0, 1],
         [BAR_HEIGHT, expandedHeight.value],
       ),
-      borderRadius: interpolate(progress.value, [0, 1], [999, 36]),
+      borderRadius: interpolate(
+        progress.value,
+        [0, 1],
+        [radius.control, radius.panel],
+      ),
     };
   });
 
@@ -417,7 +417,7 @@ export function HomeControls({
         style={styles.footer}
         pointerEvents="box-none"
       >
-        {screen === "home" ? (
+        {!isProfile ? (
           <Animated.View
             style={[
               styles.morphShell,
@@ -427,7 +427,7 @@ export function HomeControls({
             ]}
           >
             <GlassView
-              borderRadius={nativeLayout.pillRadius}
+              borderRadius={radius.panel}
               style={StyleSheet.absoluteFill}
             >
               <View style={StyleSheet.absoluteFill} />
@@ -517,12 +517,15 @@ export function HomeControls({
                     accessibilityRole="button"
                     accessibilityLabel="Adjuntar archivo o foto"
                     onPress={openAttachmentOptions}
-                    style={[
-                      styles.attachButton,
-                      { backgroundColor: colors.background },
-                    ]}
+                    style={styles.attachButtonPressable}
                   >
-                    <Paperclip size={22} color={colors.textSecondary} strokeWidth={1.7} />
+                    <WhiteChip style={styles.attachButton}>
+                      <Paperclip
+                        size={22}
+                        color={colors.textSecondary}
+                        strokeWidth={1.7}
+                      />
+                    </WhiteChip>
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
@@ -573,7 +576,7 @@ export function HomeControls({
             pointerEvents={expanded ? "none" : "auto"}
           >
             <GlassView
-              borderRadius={nativeLayout.pillRadius}
+              borderRadius={radius.control}
               style={[styles.tabBar, { width: barWidth }]}
             >
               <View style={styles.tabBarContent}>
@@ -584,20 +587,22 @@ export function HomeControls({
                     { left: highlightStart },
                     highlightStyle,
                   ]}
-                />
+                >
+                  <WhiteChip style={StyleSheet.absoluteFill} />
+                </Animated.View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Inicio"
-                  accessibilityState={{ selected: screen === "home" }}
+                  accessibilityState={{ selected: !isProfile }}
                   onPress={() => {
                     void tapLight();
-                    onScreenChange("home");
+                    if (isProfile) router.replace("/");
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
                   <Home
                     size={26}
-                    color={screen === "home" ? colors.gold : colors.iconInactive}
+                    color={!isProfile ? colors.gold : colors.iconInactive}
                     strokeWidth={1.5}
                   />
                 </Pressable>
@@ -615,16 +620,16 @@ export function HomeControls({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Perfil"
-                  accessibilityState={{ selected: screen === "profile" }}
+                  accessibilityState={{ selected: isProfile }}
                   onPress={() => {
                     void tapLight();
-                    onScreenChange("profile");
+                    if (!isProfile) router.push("/profile");
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
                   <User
                     size={26}
-                    color={screen === "profile" ? colors.gold : colors.iconInactive}
+                    color={isProfile ? colors.gold : colors.iconInactive}
                     strokeWidth={1.5}
                   />
                 </Pressable>
@@ -696,18 +701,18 @@ const styles = StyleSheet.create({
   attachment: {
     width: 56,
     height: 56,
-    borderRadius: 18,
+    borderRadius: radius.thumb,
     overflow: "visible",
   },
   attachmentImage: {
     width: 56,
     height: 56,
-    borderRadius: 18,
+    borderRadius: radius.thumb,
   },
   fileAttachment: {
     width: 56,
     height: 56,
-    borderRadius: 18,
+    borderRadius: radius.thumb,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -731,7 +736,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 0,
     borderWidth: 0,
-    borderRadius: 28,
+    borderRadius: radius.field,
     overflow: "hidden",
     outlineWidth: 0,
     outlineColor: "transparent",
@@ -752,6 +757,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+  },
+  attachButtonPressable: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: "hidden",
   },
   sendButton: {
     width: 44,
@@ -774,6 +785,7 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     height: BAR_HEIGHT,
+    borderRadius: radius.control,
   },
   tabBarContent: {
     flex: 1,
@@ -783,13 +795,11 @@ const styles = StyleSheet.create({
   },
   activeHighlight: {
     position: "absolute",
-    top: (BAR_HEIGHT - nativeEffects.activeTabHighlight.height) / 2,
-    width: nativeEffects.activeTabHighlight.width,
-    height: nativeEffects.activeTabHighlight.height,
-    borderRadius: nativeLayout.pillRadius,
-    backgroundColor: nativeEffects.activeTabHighlight.backgroundColor,
-    borderWidth: nativeEffects.activeTabHighlight.borderWidth,
-    borderColor: nativeEffects.activeTabHighlight.borderColor,
+    top: (BAR_HEIGHT - 48) / 2,
+    width: 92,
+    height: 48,
+    borderRadius: 24,
+    overflow: "hidden",
   },
   tabButton: {
     height: BAR_HEIGHT,

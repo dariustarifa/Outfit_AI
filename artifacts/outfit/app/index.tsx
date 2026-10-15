@@ -17,7 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { HomeControls } from "@/src/components/HomeControls";
-import { ProfileScreen } from "@/src/components/ProfileScreen";
 import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
@@ -25,8 +24,6 @@ import { recommendDailyOutfit } from "@/src/services/daily-recommendation";
 import { useColors } from "@/src/theme";
 import { selection } from "@/src/haptics";
 import { getStartupScreen } from "@/src/onboarding-progress";
-
-type Screen = "home" | "profile";
 
 const MADRID_LATITUDE = 40.4168;
 const MADRID_LONGITUDE = -3.7038;
@@ -54,7 +51,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
   const startupScreen = getStartupScreen(loading, profile);
-  const [screen, setScreen] = useState<Screen>("home");
   const [planComposerOpen, setPlanComposerOpen] = useState(false);
   const [clockDate, setClockDate] = useState(() => new Date());
   const dailyItems = useMemo(
@@ -171,7 +167,6 @@ export default function HomeScreen() {
         keyboardVerticalOffset={0}
       >
         <View style={styles.screen}>
-            {screen === "home" ? (
               <ScrollView
                 style={styles.fill}
                 contentInsetAdjustmentBehavior="never"
@@ -356,12 +351,7 @@ export default function HomeScreen() {
                   )}
                 </Animated.View>
               </ScrollView>
-            ) : (
-              <ProfileScreen />
-            )}
           <HomeControls
-            screen={screen}
-            onScreenChange={setScreen}
             onComposerExpandedChange={setPlanComposerOpen}
           />
         </View>

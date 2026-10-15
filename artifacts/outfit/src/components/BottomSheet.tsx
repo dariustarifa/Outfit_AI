@@ -29,6 +29,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
+import { radius } from "../theme";
 import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 import { tapLight } from "../haptics";
 
@@ -257,8 +258,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: radius.panel,
+    borderTopRightRadius: radius.panel,
     overflow: "hidden",
     zIndex: 1,
     elevation: 1,

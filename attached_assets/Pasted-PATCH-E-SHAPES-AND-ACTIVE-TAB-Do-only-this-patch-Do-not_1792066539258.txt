@@ -1,0 +1,27 @@
+PATCH E — SHAPES AND ACTIVE TAB. Do only this patch. Do not change texts, features or animation timing.
+
+1) SHAPE: less pill, more "rounded square".
+Add to theme.ts:
+  radius.control = 28   (plan button collapsed, tab bar)
+  radius.panel   = 32   (plan input panel expanded, top corners of bottom sheets)
+  radius.field   = 20   (input field inside the plan panel)
+  radius.thumb   = 14   (attachment thumbnails)
+Apply:
+- "¿Cuál es el plan de hoy?" button (collapsed): still BAR_WIDTH x BAR_HEIGHT, but borderRadius = radius.control (NOT 999).
+- Plan input panel (expanded): borderRadius = radius.panel. In the morph animation, interpolate borderRadius from radius.control to radius.panel (it was 999 to 36).
+- Input field inside the panel: radius.field. Attachment thumbnails: radius.thumb.
+- Tab bar: borderRadius = radius.control, so it matches the plan button exactly.
+- Bottom sheets: top corners radius.panel.
+- Do NOT change the paperclip button or the send button (they stay circles).
+- The corners must be "well rounded but clearly not a full pill". On the iPhone the ends of the button must not look like semicircles.
+
+2) ACTIVE TAB MARKER: same white background as the paperclip button.
+- Find the style used for the white background of the paperclip button in the plan input panel. Extract that exact style into a shared component or style object called WhiteChip (src/components/WhiteChip.tsx, or in theme.ts). Make the paperclip button use WhiteChip too, so there is a single source.
+- Use that same WhiteChip style as the marker behind the active tab icon in the tab bar (replace the current translucent marker). Keep its size 92 x 48 and keep it oval (borderRadius 24). Keep the sliding spring animation.
+- The marker sits behind the icon of the CURRENT page: Home when I am on home, Profile when I am on profile. Get the current page from the router (usePathname), NOT from local state, so it is always correct, also after going back. The Plus icon never gets the marker.
+- The active icon is gold, the inactive icons use iconInactive.
+
+DONE WHEN
+- Plan button, plan panel and tab bar have the same softly squared look.
+- The marker behind the active tab is the same white as the paperclip button, and it moves when I switch between Home and Profile.
+Reply with: files changed.
