@@ -133,6 +133,53 @@ function createTestEnvironment(platform = "ios") {
   };
 }
 
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function createControlledWardrobeActions({
+  initialWardrobe = [],
+  failFirstCommit = false,
+} = {}) {
+  let currentData = { profile: null, wardrobe: initialWardrobe };
+  let commitCount = 0;
+  const firstCommitStarted = createDeferred();
+  const releaseFirstCommit = createDeferred();
+  const errors = [];
+  const actions = createWardrobeActions({
+    getData: () => currentData,
+    async commit(next) {
+      commitCount += 1;
+      if (commitCount === 1) {
+        firstCommitStarted.resolve();
+        await releaseFirstCommit.promise;
+        if (failFirstCommit) throw new Error("First commit failed.");
+      }
+      currentData = next;
+    },
+    copyImageToAppDocuments: async (uri) => uri,
+    removeStoredImage: async () => {},
+    removeUnreferencedStoredImage: async () => {},
+    onError(error) {
+      errors.push(error);
+    },
+  });
+
+  return {
+    actions,
+    errors,
+    getData: () => currentData,
+    firstCommitStarted: firstCommitStarted.promise,
+    releaseFirstCommit: () => releaseFirstCommit.resolve(),
+  };
+}
+
 for (const platform of ["ios", "android"]) {
   test(`${platform} profile edits remain saved after restarting without reopening setup`, async () => {
     const env = createTestEnvironment(platform);
@@ -229,6 +276,73 @@ test("all 60 gallery photos remain saved and readable after reload", async () =>
       true,
     );
   }
+});
+
+test("overlapping wardrobe additions retain both items", async () => {
+  const env = createControlledWardrobeActions();
+  const firstAdd = env.actions.addItem({
+    imageUri: "file:///picker/first.jpg",
+    note: "First",
+  });
+  await env.firstCommitStarted;
+
+  const secondAdd = env.actions.addItem({
+    imageUri: "file:///picker/second.jpg",
+    note: "Second",
+  });
+  env.releaseFirstCommit();
+  await Promise.all([firstAdd, secondAdd]);
+
+  assert.deepEqual(
+    env.getData().wardrobe.map((item) => item.note),
+    ["First", "Second"],
+  );
+});
+
+test("an overlapping edit and delete both remain saved", async () => {
+  const env = createControlledWardrobeActions({
+    initialWardrobe: [
+      { id: "first", imageUri: "first.jpg", note: "Old note", createdAt: 1 },
+      { id: "second", imageUri: "second.jpg", note: "Keep", createdAt: 2 },
+    ],
+  });
+  const edit = env.actions.updateItem("first", { note: "Updated note" });
+  await env.firstCommitStarted;
+
+  const deletion = env.actions.removeItem("second");
+  env.releaseFirstCommit();
+  await Promise.all([edit, deletion]);
+
+  assert.deepEqual(env.getData().wardrobe, [
+    { id: "first", imageUri: "first.jpg", note: "Updated note", createdAt: 1 },
+  ]);
+});
+
+test("a failed wardrobe mutation does not block the next queued mutation", async () => {
+  const env = createControlledWardrobeActions({ failFirstCommit: true });
+  const failedAdd = env.actions.addItem({
+    imageUri: "file:///picker/fails.jpg",
+    note: "Failed",
+  });
+  await env.firstCommitStarted;
+
+  const successfulAdd = env.actions.addItem({
+    imageUri: "file:///picker/succeeds.jpg",
+    note: "Saved",
+  });
+  env.releaseFirstCommit();
+  const [failedResult, successfulResult] = await Promise.allSettled([
+    failedAdd,
+    successfulAdd,
+  ]);
+
+  assert.equal(failedResult.status, "rejected");
+  assert.equal(successfulResult.status, "fulfilled");
+  assert.deepEqual(
+    env.getData().wardrobe.map((item) => item.note),
+    ["Saved"],
+  );
+  assert.equal(env.errors.length, 1);
 });
 
 test("replacing a photo persists the new URI and removes the previous managed file", async () => {
