@@ -3,14 +3,10 @@ import {
   Platform,
   StatusBar as NativeStatusBar,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -82,8 +78,7 @@ function RootShellContent({
 }: {
   theme: ReturnType<typeof useTheme>;
 }) {
-  const insets = useSafeAreaInsets();
-  const { colors, mode, scheme, systemScheme, isDark } = theme;
+  const { colors, isDark } = theme;
 
   return (
     <>
@@ -102,7 +97,7 @@ function RootShellContent({
                   screenOptions={{
                     headerShown: false,
                     contentStyle: { backgroundColor: "transparent" },
-                    animation: "fade",
+                    animation: "none",
                   }}
                 >
                   <Stack.Screen
@@ -117,20 +112,6 @@ function RootShellContent({
           </HomeControlsProvider>
         </AppProvider>
       </ErrorBoundary>
-      {__DEV__ ? (
-        <View
-          testID="theme-debug-badge"
-          pointerEvents="none"
-          style={[
-            styles.debugBadge,
-            { top: insets.top + 4, backgroundColor: colors.chipBg },
-          ]}
-        >
-          <Text style={[styles.debugBadgeText, { color: colors.onChip }]}>
-            {mode} · sys:{systemScheme ?? "unknown"} · {scheme}
-          </Text>
-        </View>
-      ) : null}
       <StatusBar style={isDark ? "light" : "dark"} />
       {Platform.OS === "android" ? (
         <NativeStatusBar
@@ -156,17 +137,4 @@ function PersistentHomeControls() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  debugBadge: {
-    position: "absolute",
-    right: 10,
-    zIndex: 999,
-    elevation: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  debugBadgeText: {
-    fontFamily: "Satoshi_500Medium",
-    fontSize: 11,
-  },
 });

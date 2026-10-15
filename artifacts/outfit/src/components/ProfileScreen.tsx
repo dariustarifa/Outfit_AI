@@ -32,6 +32,7 @@ import { useTheme, type ThemeMode, type ThemeColors } from "../theme";
 import { useSettings } from "../context/SettingsContext";
 import type { GlassLevel } from "../theme-mode";
 import { useApp } from "@/src/context/AppContext";
+import { useHomeControlsState } from "@/src/context/HomeControlsContext";
 import { getProfileDisplay } from "@/src/profile-display";
 import type { Gender, Profile, ProfileUpdate, WardrobeItem } from "@/src/types";
 import { formatCity, searchCities, type CityResult } from "@/src/services/geocoding";
@@ -422,6 +423,7 @@ export function ProfileScreen() {
     wardrobe,
     updateProfile,
   } = useApp();
+  const { setProfileEditorOpen } = useHomeControlsState();
   const profileDisplay = getProfileDisplay(profile);
   const [form, setForm] = useState<ProfileForm>(() =>
     profile ? formFromProfile(profile) : emptyForm(),
@@ -439,6 +441,15 @@ export function ProfileScreen() {
     ImagePicker.useCameraPermissions();
   const [mediaPermission, requestMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
+
+  useEffect(() => {
+    setProfileEditorOpen(sheetLayerActive);
+  }, [setProfileEditorOpen, sheetLayerActive]);
+
+  useEffect(
+    () => () => setProfileEditorOpen(false),
+    [setProfileEditorOpen],
+  );
 
   const editingCity =
     activeSheet?.kind === "profile" && activeSheet.field === "city";
@@ -931,35 +942,6 @@ export function ProfileScreen() {
                 >
                   Cristalino deja ver el fondo; Mate es más opaco y difuminado.
                 </Text>
-                <View
-                  style={[
-                    styles.glassPreviewBackdrop,
-                    { backgroundColor: colors.blobA },
-                  ]}
-                >
-                  <View
-                    pointerEvents="none"
-                    style={[
-                      styles.glassPreviewStrip,
-                      { backgroundColor: colors.blobB },
-                    ]}
-                  />
-                  <GlassView
-                    borderRadius={28}
-                    edge
-                    shadow={false}
-                    style={styles.glassPreview}
-                  >
-                    <Text
-                      style={[
-                        styles.glassPreviewText,
-                        { color: colors.text },
-                      ]}
-                    >
-                      Vista previa
-                    </Text>
-                  </GlassView>
-                </View>
               </View>
             </GlassView>
 
@@ -1359,28 +1341,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  glassPreviewBackdrop: {
-    height: 72,
-    borderRadius: 28,
-    overflow: "hidden",
-    justifyContent: "center",
-  },
-  glassPreviewStrip: {
-    position: "absolute",
-    top: 22,
-    left: 0,
-    right: 0,
-    height: 28,
-  },
-  glassPreview: {
-    height: 72,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  glassPreviewText: {
-    fontFamily: "Satoshi_500Medium",
-    fontSize: 15,
-  },
   appearanceOption: {
     flex: 1,
     minWidth: 0,
@@ -1447,14 +1407,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   popDetailClose: {
-    width: 40,
-    height: 40,
+    width: nativeLayout.baseSpacing * 11,
+    height: nativeLayout.baseSpacing * 11,
     borderRadius: nativeLayout.pillRadius,
     overflow: "hidden",
   },
   popDetailCloseSurface: {
-    width: 40,
-    height: 40,
+    width: nativeLayout.baseSpacing * 11,
+    height: nativeLayout.baseSpacing * 11,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1482,8 +1442,8 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: nativeLayout.baseSpacing * 11,
+    height: nativeLayout.baseSpacing * 11,
     borderRadius: nativeLayout.pillRadius,
     alignItems: "center",
     justifyContent: "center",

@@ -12,8 +12,6 @@ import {
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import Animated, {
-  FadeInDown,
-  SlideInDown,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -529,9 +527,8 @@ export default function ProgressiveOnboardingScreen() {
 
             <View style={styles.stepContent}>
               {step === 5 ? (
-                <Animated.View
+                <View
                   key="consent-face"
-                  entering={FadeInDown.duration(300)}
                   style={styles.face}
                 >
                   <Animated.View
@@ -571,12 +568,10 @@ export default function ProgressiveOnboardingScreen() {
                       />
                     </Svg>
                   </Animated.View>
-                </Animated.View>
+                </View>
               ) : null}
               <View style={styles.headingGroup}>
-                <Animated.Text
-                  key={`title-${step}`}
-                  entering={FadeInDown.duration(250)}
+                <Text
                   style={[
                     styles.title,
                     step === 5 && styles.consentTitle,
@@ -584,10 +579,8 @@ export default function ProgressiveOnboardingScreen() {
                   ]}
                 >
                   {titles[step]}
-                </Animated.Text>
-                <Animated.Text
-                  key={`subtitle-${step}`}
-                  entering={FadeInDown.duration(250).delay(80)}
+                </Text>
+                <Text
                   style={[
                     styles.subtitle,
                     step === 5 && styles.consentSubtitle,
@@ -595,13 +588,10 @@ export default function ProgressiveOnboardingScreen() {
                   ]}
                 >
                   {descriptions[step]}
-                </Animated.Text>
+                </Text>
               </View>
 
-          <Animated.View
-            key={`content-${step}`}
-            entering={SlideInDown.duration(250).delay(120)}
-          >
+          <View key={`content-${step}`}>
             <GlassView style={styles.formCard}>
               <View style={styles.formContent}>
               {step === 0 ? (
@@ -882,7 +872,7 @@ export default function ProgressiveOnboardingScreen() {
               ) : null}
               </View>
             </GlassView>
-          </Animated.View>
+          </View>
 
           {step === 5 ? (
             <Pressable
@@ -1026,7 +1016,7 @@ const styles = StyleSheet.create({
   topGroup: { flexShrink: 0 },
   stepContent: {
     flexGrow: 1,
-    justifyContent: "space-evenly",
+    justifyContent: "flex-start",
   },
   footer: {
     flexShrink: 0,

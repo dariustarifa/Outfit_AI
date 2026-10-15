@@ -10,6 +10,8 @@ import {
 interface HomeControlsContextValue {
   planComposerOpen: boolean;
   setPlanComposerOpen: (open: boolean) => void;
+  profileEditorOpen: boolean;
+  setProfileEditorOpen: (open: boolean) => void;
 }
 
 const HomeControlsContext =
@@ -17,13 +19,28 @@ const HomeControlsContext =
 
 export function HomeControlsProvider({ children }: { children: ReactNode }) {
   const [planComposerOpen, setPlanComposerOpenState] = useState(false);
+  const [profileEditorOpen, setProfileEditorOpenState] = useState(false);
   const setPlanComposerOpen = useCallback(
     (open: boolean) => setPlanComposerOpenState(open),
     [],
   );
+  const setProfileEditorOpen = useCallback(
+    (open: boolean) => setProfileEditorOpenState(open),
+    [],
+  );
   const value = useMemo(
-    () => ({ planComposerOpen, setPlanComposerOpen }),
-    [planComposerOpen, setPlanComposerOpen],
+    () => ({
+      planComposerOpen,
+      setPlanComposerOpen,
+      profileEditorOpen,
+      setProfileEditorOpen,
+    }),
+    [
+      planComposerOpen,
+      profileEditorOpen,
+      setPlanComposerOpen,
+      setProfileEditorOpen,
+    ],
   );
 
   return (

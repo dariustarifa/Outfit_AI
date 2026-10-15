@@ -20,6 +20,7 @@ import {
   ArrowRight,
   ArrowUp,
   FileText,
+  House,
   Paperclip,
   X,
 } from "lucide-react-native";
@@ -90,11 +91,15 @@ function makeAttachment(
 
 function HomeControlsComponent({ visible = true }: HomeControlsProps) {
   const { colors, isDark } = useTheme();
-  const { setPlanComposerOpen } = useHomeControlsState();
+  const {
+    setPlanComposerOpen,
+    profileEditorOpen,
+  } = useHomeControlsState();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const pathname = usePathname();
   const isProfile = isProfileTabActive(pathname);
+  const tabBarHidden = isProfile && profileEditorOpen;
   const keyboard = useAnimatedKeyboard();
   const barWidth = BAR_WIDTH(width);
   const tabSlotWidth = barWidth / 3;
@@ -332,7 +337,7 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
       borderRadius: interpolate(
         progress.value,
         [0, 1],
-        [radius.control, radius.panel],
+        [radius.panel, radius.panel],
       ),
     };
   });
@@ -598,15 +603,19 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
         ) : null}
 
         <Animated.View
-          style={[styles.tabBarEntrance, { bottom: barBottom }]}
-          pointerEvents="box-none"
+          style={[
+            styles.tabBarEntrance,
+            { bottom: barBottom },
+            tabBarHidden && styles.hidden,
+          ]}
+          pointerEvents={tabBarHidden ? "none" : "box-none"}
         >
           <Animated.View
             style={[styles.tabBarClip, tabBarStyle]}
             pointerEvents={expanded ? "none" : "auto"}
           >
             <GlassView
-              borderRadius={radius.control}
+              borderRadius={radius.panel}
               edge
               shadow
               style={[styles.tabBar, { width: barWidth }]}
@@ -635,10 +644,10 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
-                  <Ionicons
-                    name="home"
+                  <House
                     size={28}
                     color={!isProfile ? colors.gold : colors.iconInactive}
+                    strokeWidth={1.8}
                   />
                 </Pressable>
                 <Pressable
@@ -828,7 +837,7 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     height: BAR_HEIGHT,
-    borderRadius: radius.control,
+    borderRadius: radius.panel,
   },
   tabBarContent: {
     flex: 1,

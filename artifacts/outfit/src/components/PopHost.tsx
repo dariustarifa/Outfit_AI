@@ -20,6 +20,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { useTheme } from "@/src/theme";
 import { tapLight } from "@/src/haptics";
 
@@ -262,6 +263,17 @@ export function PopHost() {
             frameStyle,
           ]}
         >
+          <View
+            pointerEvents="none"
+            style={styles.dragHandleArea}
+          >
+            <View
+              style={[
+                styles.dragHandle,
+                { backgroundColor: colors.textSecondary },
+              ]}
+            />
+          </View>
           <Animated.View
             pointerEvents="none"
             style={[StyleSheet.absoluteFill, previewStyle]}
@@ -303,6 +315,22 @@ const styles = StyleSheet.create({
     position: "absolute",
     overflow: "hidden",
     zIndex: 1,
+  },
+  dragHandleArea: {
+    position: "absolute",
+    top: nativeLayout.baseSpacing * 2,
+    left: 0,
+    right: 0,
+    height: nativeLayout.baseSpacing * 6,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  dragHandle: {
+    width: nativeLayout.baseSpacing * 9,
+    height: nativeLayout.baseSpacing,
+    borderRadius: nativeLayout.pillRadius,
+    opacity: 0.55,
   },
   previewImage: {
     width: "100%",

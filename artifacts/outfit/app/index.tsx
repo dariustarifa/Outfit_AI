@@ -10,13 +10,9 @@ import {
   View,
 } from "react-native";
 import { Image } from "expo-image";
-import { Redirect, router, useIsFocused } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { ArrowRight, CloudSun, Plus, Shirt } from "lucide-react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
@@ -54,11 +50,6 @@ function formatDate(date: Date): string {
 
 export function HomeScreen() {
   const { colors } = useTheme();
-  const isFocused = useIsFocused();
-  const focusProgress = useSharedValue(0);
-  const focusStyle = useAnimatedStyle(() => ({
-    opacity: focusProgress.value,
-  }));
   const insets = useSafeAreaInsets();
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
   const profileDisplay = getProfileDisplay(profile);
@@ -71,12 +62,6 @@ export function HomeScreen() {
     () => recommendDailyOutfit(wardrobe, clockDate, weather),
     [clockDate, wardrobe, weather],
   );
-
-  useEffect(() => {
-    if (!isFocused) return;
-    focusProgress.value = 0;
-    focusProgress.value = withTiming(1, { duration: 140 });
-  }, [focusProgress, isFocused]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -196,7 +181,7 @@ export function HomeScreen() {
   }
 
   return (
-    <Animated.View style={[styles.fill, focusStyle]}>
+    <View style={styles.fill}>
       <KeyboardAvoidingView
         style={styles.fill}
         behavior={
@@ -351,7 +336,7 @@ export function HomeScreen() {
               </ScrollView>
         </View>
       </KeyboardAvoidingView>
-    </Animated.View>
+    </View>
   );
 }
 
