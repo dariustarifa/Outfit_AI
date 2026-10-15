@@ -20,13 +20,11 @@ import { HomeControls } from "@/src/components/HomeControls";
 import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
+import { getHomeWeatherText, refreshWeatherForProfile } from "@/src/services/home-weather";
 import { recommendDailyOutfit } from "@/src/services/daily-recommendation";
 import { useTheme } from "@/src/theme";
 import { selection } from "@/src/haptics";
 import { getStartupScreen } from "@/src/onboarding-progress";
-
-const MADRID_LATITUDE = 40.4168;
-const MADRID_LONGITUDE = -3.7038;
 
 function formatClock(date: Date): string {
   return new Intl.DateTimeFormat("es-ES", {
@@ -76,15 +74,13 @@ export default function HomeScreen() {
     if (loading || !profile?.onboardingCompleted) return;
     let mounted = true;
     let requestInFlight = false;
-    const latitude = profile.latitude ?? MADRID_LATITUDE;
-    const longitude = profile.longitude ?? MADRID_LONGITUDE;
-
     const refreshWeather = async () => {
       if (requestInFlight) return;
       requestInFlight = true;
       try {
-        const snapshot = await fetchWeather(latitude, longitude);
-        if (mounted) await setWeather(snapshot);
+        await refreshWeatherForProfile(profile, fetchWeather, async (snapshot) => {
+          if (mounted) await setWeather(snapshot);
+        });
       } catch {
         // Keep the cached local weather visible when refresh is unavailable.
       } finally {
@@ -113,9 +109,11 @@ export default function HomeScreen() {
 
   const displayName =
     profile?.preferredName?.trim() || profile?.name.trim() || "Tú";
-  const timeAndWeather = weather
-    ? `${formatClock(clockDate)} · ${Math.round(weather.temperatureC)}° · ${weather.condition}`
-    : `${formatClock(clockDate)} · ${profile?.city ?? ""}`;
+  const timeAndWeather = getHomeWeatherText(
+    formatClock(clockDate),
+    weather,
+    profile?.city ?? "",
+  );
 
   const openWardrobe = () => {
     void selection();
