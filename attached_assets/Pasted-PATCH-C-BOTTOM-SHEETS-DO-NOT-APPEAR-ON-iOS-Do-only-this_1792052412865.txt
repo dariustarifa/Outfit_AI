@@ -1,0 +1,31 @@
+PATCH C — BOTTOM SHEETS DO NOT APPEAR ON iOS. Do only this patch.
+
+PROBLEM
+On iPhone, when I tap a garment in the profile, or the "+" button, the sheet does not appear: it stays stuck below the bottom edge. On web it works.
+
+PROBABLE CAUSE: the sheet starts off-screen and the animation that brings it up never runs on iOS, or the sheet is inside a React Native <Modal>.
+
+FIX: build ONE reusable component, BottomSheet (src/components/BottomSheet.tsx), and use it for BOTH sheets (garment editor and "+" options). Do NOT use React Native <Modal>.
+
+How it works
+- Props: visible: boolean, onClose: () => void, children.
+- It is an overlay: position "absolute", top 0, left 0, right 0, bottom 0, zIndex 100. Render it from the root of the screen/layout so it also covers the tab bar. When visible is false and the closing animation has finished, render nothing.
+- Inside: (1) a backdrop View with absoluteFill and rgba(0,0,0,0.18); tapping it calls onClose. (2) the sheet container: position "absolute", left 0, right 0, bottom 0, borderTopLeftRadius 32, borderTopRightRadius 32, paddingBottom insets.bottom + 16, and the GlassView style as background.
+- Animation with react-native-reanimated, one shared value "progress" (0 to 1):
+  - translateY = interpolate(progress, [0, 1], [hiddenOffset, 0]), where hiddenOffset = sheetHeight + 80 once measured with onLayout, and Dimensions.get("screen").height until then. This way it ALWAYS starts fully outside the screen, even before it is measured.
+  - Open: when visible becomes true, mount the sheet, then in useEffect set progress.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }).
+  - Close: progress.value = withTiming(0, { duration: 240 }, (finished) => { if (finished) runOnJS(unmount)(); }).
+  - Backdrop opacity = progress.
+- Call tapLight() when it opens.
+- Keyboard: when the note TextInput is focused, the sheet moves up by the keyboard height. Use the Keyboard events "keyboardWillShow" and "keyboardWillHide" on iOS and animate with the keyboard's duration.
+- Swipe down to close: Gesture.Pan on the handle area. If translationY > 80 or velocityY > 800, close.
+
+IF IT STILL DOES NOT APPEAR on the iPhone after this: switch the animation to the built-in React Native Animated API with useNativeDriver: true, and tell me. Do not leave it broken.
+
+Apply it to
+- Profile: tap on a garment -> BottomSheet with the large photo, the note input, "Guardar" and "Eliminar prenda" (same content and behavior as before).
+- "+" button -> BottomSheet with "Hacer foto", "Elegir de la galería" and "Cancelar" (same behavior as before).
+
+DONE WHEN
+On my iPhone both sheets slide up from the bottom edge, close by tapping outside or swiping down, and the keyboard never covers the note field.
+Reply with: files changed, and what the real cause was.

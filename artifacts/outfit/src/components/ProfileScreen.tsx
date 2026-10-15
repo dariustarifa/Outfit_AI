@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Dimensions,
   Image,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -26,11 +24,6 @@ import {
   UserRound,
   X,
 } from "lucide-react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import {
@@ -42,6 +35,7 @@ import { useApp } from "@/src/context/AppContext";
 import type { Profile, ProfileUpdate, WardrobeItem } from "@/src/types";
 import { formatCity, searchCities, type CityResult } from "@/src/services/geocoding";
 import { selection, success } from "@/src/haptics";
+import { BottomSheet } from "./BottomSheet";
 
 type EditableField = "name" | "age" | "heightCm" | "city" | "bodyPhotoUri";
 type ActiveSheet =
@@ -202,22 +196,7 @@ export function ProfileScreen() {
   const [cityResults, setCityResults] = useState<CityResult[]>([]);
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
-  const sheetOffset = useSharedValue(screenHeight);
-  const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetOffset.value }],
-  }));
-  useEffect(() => {
-    if (!activeSheet) {
-      sheetOffset.value = screenHeight;
-      return;
-    }
-    sheetOffset.value = screenHeight;
-    sheetOffset.value = withSpring(0, {
-      damping: 20,
-      stiffness: 220,
-      mass: 1,
-    });
-  }, [activeSheet, screenHeight, sheetOffset]);
+  const [sheetLayerActive, setSheetLayerActive] = useState(false);
   const [message, setMessage] = useState("");
   const [itemNote, setItemNote] = useState("");
   const [itemError, setItemError] = useState("");
@@ -285,6 +264,7 @@ export function ProfileScreen() {
   const openProfileEditor = (field: EditableField) => {
     if (!profile) return;
     void selection();
+    setSheetLayerActive(true);
     setForm(formFromProfile(profile));
     setSelectedCity(cityFromProfile(profile));
     setCityResults([]);
@@ -295,6 +275,7 @@ export function ProfileScreen() {
 
   const openGarmentSheet = (item: WardrobeItem) => {
     void selection();
+    setSheetLayerActive(true);
     setItemNote(item.note);
     setItemError("");
     setActiveSheet({ kind: "garment", itemId: item.id });
@@ -312,6 +293,10 @@ export function ProfileScreen() {
     setItemError("");
     setActiveSheet(null);
   };
+
+  const handleSheetDismissed = useCallback(() => {
+    setSheetLayerActive(false);
+  }, []);
 
   const choosePhoto = async () => {
     setMessage("");
@@ -520,13 +505,14 @@ export function ProfileScreen() {
   ];
   const activeField =
     activeSheet?.kind === "profile" ? activeSheet.field : null;
-  const sheetBottomPadding =
-    Platform.OS === "web"
-      ? Math.max(insets.bottom, 34) + 16
-      : insets.bottom + 16;
 
   return (
-    <View style={styles.fill}>
+    <View
+      style={[
+        styles.fill,
+        sheetLayerActive && styles.sheetLayer,
+      ]}
+    >
       <ScrollView
         style={styles.fill}
         testID="profile-screen"
@@ -651,71 +637,28 @@ export function ProfileScreen() {
         )}
       </ScrollView>
 
-      <Modal
+      <BottomSheet
         visible={activeSheet !== null}
-        transparent
-        animationType="none"
-        statusBarTranslucent
-        onRequestClose={closeSheet}
+        onClose={closeSheet}
+        onDismissed={handleSheetDismissed}
+        backdropTestID="close-profile-sheet-backdrop"
+        backdropLabel="Cerrar"
       >
-        <View style={styles.modalRoot}>
-          <Pressable
-            accessibilityLabel="Cerrar"
-            testID="close-profile-sheet-backdrop"
-            onPress={closeSheet}
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: colors.textPrimary, opacity: 0.24 },
-            ]}
-          />
-          <KeyboardAvoidingView
-            style={styles.sheetDock}
-            behavior={Platform.OS === "web" ? undefined : "padding"}
-            keyboardVerticalOffset={0}
-          >
-            <Animated.View
-              key={
-                activeSheet?.kind === "profile"
-                  ? `profile-${activeSheet.field}`
-                  : activeSheet?.kind === "garment"
-                    ? `garment-${activeSheet.itemId}`
-                    : "closed"
-              }
-              style={[
-                styles.sheetOuter,
-                sheetAnimatedStyle,
-                { maxHeight: Math.min(screenHeight * 0.92, 760) },
-              ]}
-            >
-              <GlassView
-                style={[
-                  styles.sheet,
-                  { borderColor: nativeEffects.glass.borderColor },
-                ]}
-              >
-                <View style={styles.sheetGrabberWrap}>
-                  <View
-                    style={[
-                      styles.sheetGrabber,
-                      { backgroundColor: colors.textSecondary },
-                    ]}
-                  />
-                </View>
-                <ScrollView
-                  contentInsetAdjustmentBehavior="never"
-                  contentContainerStyle={[
-                    styles.sheetContent,
-                    {
-                      paddingHorizontal: nativeLayout.screenHorizontalPadding,
-                      paddingBottom: sheetBottomPadding,
-                    },
-                  ]}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode={
-                    Platform.OS === "ios" ? "interactive" : "on-drag"
-                  }
-                  showsVerticalScrollIndicator={false}
-                >
+        <ScrollView
+          style={styles.sheetScroll}
+          contentInsetAdjustmentBehavior="never"
+          contentContainerStyle={[
+            styles.sheetContent,
+            {
+              paddingHorizontal: nativeLayout.screenHorizontalPadding,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
+          showsVerticalScrollIndicator={false}
+        >
                   {activeField ? (
                     <>
                       <View style={styles.sheetHeader}>
@@ -1055,18 +998,19 @@ export function ProfileScreen() {
                       </Pressable>
                     </>
                   ) : null}
-                </ScrollView>
-              </GlassView>
-            </Animated.View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  sheetLayer: {
+    position: "relative",
+    zIndex: 100,
+    elevation: 100,
+  },
   content: { flexGrow: 1 },
   title: {
     fontFamily: "Melodrama_500Medium",
@@ -1125,30 +1069,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: nativeLayout.baseSpacing,
   },
-  modalRoot: { flex: 1, justifyContent: "flex-end" },
-  sheetDock: { flex: 1, justifyContent: "flex-end" },
-  sheetOuter: { width: "100%" },
-  sheet: {
-    borderTopLeftRadius: nativeLayout.cardRadius,
-    borderTopRightRadius: nativeLayout.cardRadius,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  sheetGrabberWrap: {
-    minHeight: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sheetGrabber: {
-    width: 36,
-    height: 4,
-    borderRadius: nativeLayout.pillRadius,
-    opacity: 0.48,
-  },
+  sheetScroll: { flexShrink: 1 },
   sheetContent: {
     flexGrow: 1,
     paddingTop: nativeLayout.baseSpacing * 2,
-    paddingBottom: nativeLayout.baseSpacing * 3,
     gap: nativeLayout.baseSpacing * 3,
   },
   sheetHeader: {

@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
-  Dimensions,
   Linking,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -12,12 +10,6 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Camera, ImagePlus, X } from "lucide-react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import {
@@ -28,6 +20,7 @@ import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 import { useApp } from "@/src/context/AppContext";
 import { selection, success } from "@/src/haptics";
 import { saveGallerySelection } from "@/src/gallery-save";
+import { BottomSheet } from "./BottomSheet";
 
 interface WardrobeAddSheetProps {
   visible: boolean;
@@ -35,39 +28,16 @@ interface WardrobeAddSheetProps {
   onToast: (message: string) => void;
 }
 
-const screenHeight = Dimensions.get("screen").height;
-
 export function WardrobeAddSheet({
   visible,
   onDismiss,
   onToast,
 }: WardrobeAddSheetProps) {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
   const { addItem } = useApp();
   const [busy, setBusy] = useState(false);
-  const sheetOffset = useSharedValue(screenHeight);
-  const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetOffset.value }],
-  }));
   const [mediaPermission, requestMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
-  useEffect(() => {
-    if (!visible) {
-      sheetOffset.value = screenHeight;
-      return;
-    }
-    sheetOffset.value = screenHeight;
-    sheetOffset.value = withSpring(0, {
-      damping: 20,
-      stiffness: 220,
-      mass: 1,
-    });
-  }, [sheetOffset, visible]);
-  const sheetBottomPadding =
-    Platform.OS === "web"
-      ? Math.max(insets.bottom, 34) + 16
-      : insets.bottom + 16;
 
   const openCamera = () => {
     if (busy) return;
@@ -78,7 +48,7 @@ export function WardrobeAddSheet({
         pathname: "/onboarding/wardrobe",
         params: { from: "plus" },
       } as never);
-    }, 0);
+    }, 250);
   };
 
   const chooseFromGallery = async () => {
@@ -153,39 +123,14 @@ export function WardrobeAddSheet({
   };
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={onDismiss}
+      onClose={onDismiss}
+      backdropTestID="close-add-wardrobe-sheet-backdrop"
+      backdropLabel="Cerrar menú de añadir"
     >
-      <View style={styles.modalRoot}>
-        <Pressable
-          accessibilityLabel="Cerrar menú de añadir"
-          testID="close-add-wardrobe-sheet-backdrop"
-          onPress={onDismiss}
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: colors.textPrimary, opacity: 0.24 },
-          ]}
-        />
-        <Animated.View
-          style={[styles.sheetOuter, sheetAnimatedStyle]}
-        >
-          <GlassView
-            borderRadius={nativeLayout.cardRadius}
-            style={[
-              styles.sheet,
-              { borderColor: nativeEffects.glass.borderColor },
-            ]}
-          >
-            <View style={styles.grabberWrap}>
-              <View
-                style={[styles.grabber, { backgroundColor: colors.textSecondary }]}
-              />
-            </View>
-            <View style={styles.sheetHeader}>
+      <View style={styles.sheetContent}>
+        <View style={styles.sheetHeader}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>
                 Añadir prenda
               </Text>
@@ -275,33 +220,15 @@ export function WardrobeAddSheet({
                 Cancelar
               </Text>
             </Pressable>
-            <View style={{ height: sheetBottomPadding }} />
-          </GlassView>
-        </Animated.View>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  modalRoot: { flex: 1, justifyContent: "flex-end" },
-  sheetOuter: { width: "100%" },
-  sheet: {
-    borderTopLeftRadius: nativeLayout.cardRadius,
-    borderTopRightRadius: nativeLayout.cardRadius,
-    borderWidth: 1,
+  sheetContent: {
+    width: "100%",
     paddingHorizontal: nativeLayout.screenHorizontalPadding,
-  },
-  grabberWrap: {
-    minHeight: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: nativeLayout.pillRadius,
-    opacity: 0.48,
   },
   sheetHeader: {
     minHeight: nativeLayout.primaryButtonHeight,

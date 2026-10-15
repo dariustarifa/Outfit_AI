@@ -504,7 +504,6 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                   accessibilityLabel="Añadir"
                   testID="add-wardrobe-item-tab"
                   onPress={() => {
-                    void tapLight();
                     setAddSheetVisible(true);
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
