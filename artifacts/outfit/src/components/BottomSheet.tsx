@@ -29,8 +29,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
-import { radius } from "../theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { radius, useTheme } from "../theme";
 import { tapLight } from "../haptics";
 
 interface BottomSheetProps {
@@ -53,7 +52,7 @@ export function BottomSheet({
   backdropTestID = "bottom-sheet-backdrop",
   backdropLabel = "Cerrar",
 }: BottomSheetProps) {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { height: viewportHeight } = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);

@@ -22,18 +22,15 @@ import {
   X,
 } from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import {
-  nativeEffects,
-  nativeLayout,
-} from "@workspace/outfit-design-system/lib/native-theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
+import { useTheme } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import type { WardrobeItem } from "@/src/types";
 import { searchWardrobeItems } from "@/src/wardrobe-search";
 import { selection, success } from "@/src/haptics";
 
 export default function WardrobeScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { source } = useLocalSearchParams<{ source?: string }>();
   const { wardrobe, loading, error, removeItem } = useApp();
@@ -118,7 +115,7 @@ export default function WardrobeScreen() {
               styles.photoFrame,
               {
                 borderRadius: nativeLayout.cardRadius,
-                borderColor: nativeEffects.glass.borderColor,
+                borderColor: colors.glassBorder,
                 backgroundColor: colors.muted,
               },
             ]}
@@ -230,8 +227,8 @@ export default function WardrobeScreen() {
                   style={[
                     styles.searchField,
                     {
-                      borderColor: nativeEffects.glass.borderColor,
-                      backgroundColor: colors.input,
+                      borderColor: colors.glassBorder,
+                      backgroundColor: colors.fieldBg,
                     },
                   ]}
                 >

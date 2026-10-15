@@ -1,11 +1,11 @@
 import { Link, Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 import { nativeLayout } from "@/src/theme";
+import { useTheme } from "@/src/theme";
 
 export default function NotFoundScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (

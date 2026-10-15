@@ -3,6 +3,7 @@ import {
   Platform,
   StyleSheet,
   View,
+  useColorScheme,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -12,6 +13,7 @@ import {
   GlassView as NativeGlass,
   isLiquidGlassAvailable,
 } from "expo-glass-effect";
+import { useColors } from "../../hooks/use-colors";
 import { nativeEffects, nativeLayout } from "../../lib/native-theme";
 
 export type GlassViewProps = {
@@ -27,6 +29,8 @@ export function GlassView({
   style,
   testID,
 }: GlassViewProps) {
+  const colors = useColors();
+  const isDark = useColorScheme() === "dark";
   const glass = nativeEffects.glass;
   if (Platform.OS === "ios" && isLiquidGlassAvailable()) {
     return (
@@ -47,7 +51,7 @@ export function GlassView({
         styles.shadow,
         {
           borderRadius,
-          shadowColor: glass.shadowColor,
+          shadowColor: colors.textPrimary,
           shadowOpacity: glass.shadowOpacity,
           shadowRadius: glass.shadowRadius,
           shadowOffset: { width: 0, height: glass.shadowOffsetY },
@@ -64,12 +68,15 @@ export function GlassView({
         <BlurView
           pointerEvents="none"
           intensity={glass.blurIntensity}
-          tint={glass.tint}
+          tint={isDark ? "dark" : "light"}
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
           pointerEvents="none"
-          colors={[glass.gradientStart, glass.gradientEnd]}
+          colors={[
+            isDark ? halfAlpha(glass.gradientStart) : glass.gradientStart,
+            isDark ? halfAlpha(glass.gradientEnd) : glass.gradientEnd,
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -79,12 +86,15 @@ export function GlassView({
           style={[
             StyleSheet.absoluteFill,
             styles.borderLayer,
-            { borderRadius, borderColor: glass.borderColor },
+            { borderRadius, borderColor: colors.glassBorder },
           ]}
         />
         <LinearGradient
           pointerEvents="none"
-          colors={[glass.highlightStart, glass.highlightEnd]}
+          colors={[
+            isDark ? halfAlpha(glass.highlightStart) : glass.highlightStart,
+            isDark ? halfAlpha(glass.highlightEnd) : glass.highlightEnd,
+          ]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={styles.topHighlight}
@@ -99,6 +109,14 @@ export function GlassView({
   );
 }
 
+function halfAlpha(color: string): string {
+  return color.replace(
+    /rgba\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/,
+    (_match, red: string, green: string, blue: string, alpha: string) =>
+      `rgba(${red},${green},${blue},${Number(alpha) / 2})`,
+  );
+}
+
 const styles = StyleSheet.create({
   shadow: {
     backgroundColor: "transparent",
@@ -110,7 +128,7 @@ const styles = StyleSheet.create({
   },
   borderLayer: {
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.75)",
+    borderColor: "transparent",
   },
   topHighlight: {
     position: "absolute",

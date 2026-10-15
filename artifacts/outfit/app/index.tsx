@@ -21,7 +21,7 @@ import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
 import { recommendDailyOutfit } from "@/src/services/daily-recommendation";
-import { useColors } from "@/src/theme";
+import { useTheme } from "@/src/theme";
 import { selection } from "@/src/haptics";
 import { getStartupScreen } from "@/src/onboarding-progress";
 
@@ -47,7 +47,7 @@ function formatDate(date: Date): string {
 }
 
 export default function HomeScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
   const startupScreen = getStartupScreen(loading, profile);

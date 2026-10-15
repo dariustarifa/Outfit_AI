@@ -31,11 +31,8 @@ import {
   Settings,
 } from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import {
-  nativeEffects,
-  nativeLayout,
-} from "@workspace/outfit-design-system/lib/native-theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
+import { useTheme } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import { selection, success, tapLight } from "@/src/haptics";
 import {
@@ -48,7 +45,7 @@ const WEB_SAFE_BOTTOM = 34;
 const screenHeight = Dimensions.get("screen").height;
 
 export default function WardrobeOnboardingScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromPlus = from === "plus";
@@ -377,7 +374,7 @@ export default function WardrobeOnboardingScreen() {
                   styles.previewFrame,
                   {
                     height: previewHeight,
-                    borderColor: nativeEffects.glass.borderColor,
+                    borderColor: colors.glassBorder,
                     backgroundColor: colors.card,
                   },
                 ]}
@@ -420,8 +417,8 @@ export default function WardrobeOnboardingScreen() {
                     styles.noteInput,
                     {
                       color: colors.textPrimary,
-                      borderColor: colors.border,
-                      backgroundColor: colors.card,
+                      borderColor: colors.fieldBorder,
+                      backgroundColor: colors.fieldBg,
                     },
                   ]}
                 />
@@ -509,7 +506,12 @@ export default function WardrobeOnboardingScreen() {
 
   return (
     <View style={styles.fill}>
-      <View style={[styles.cameraRoot, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.cameraRoot,
+          { backgroundColor: colors.cameraBackground },
+        ]}
+      >
         {cameraGranted ? (
           <CameraView
             ref={cameraRef}
@@ -537,7 +539,7 @@ export default function WardrobeOnboardingScreen() {
               borderRadius={nativeLayout.pillRadius}
               style={[
                 styles.countChip,
-                { borderColor: nativeEffects.glass.borderColor },
+                { borderColor: colors.glassBorder },
               ]}
             >
               <Text style={[styles.countText, { color: colors.textPrimary }]}>
@@ -559,7 +561,7 @@ export default function WardrobeOnboardingScreen() {
                   borderRadius={nativeLayout.pillRadius}
                   style={[
                     styles.confirmChip,
-                    { borderColor: nativeEffects.glass.borderColor },
+                    { borderColor: colors.glassBorder },
                   ]}
                 >
                   <Text
@@ -786,7 +788,7 @@ export default function WardrobeOnboardingScreen() {
                       borderRadius={nativeLayout.pillRadius}
                       style={[
                         styles.roundButtonGlass,
-                        { borderColor: nativeEffects.glass.borderColor },
+                        { borderColor: colors.glassBorder },
                       ]}
                     >
                       <ImagePlus size={22} color={colors.textPrimary} />
@@ -833,7 +835,7 @@ export default function WardrobeOnboardingScreen() {
                       borderRadius={nativeLayout.pillRadius}
                       style={[
                         styles.roundButtonGlass,
-                        { borderColor: nativeEffects.glass.borderColor },
+                        { borderColor: colors.glassBorder },
                       ]}
                     >
                       <Plus size={22} color={colors.textPrimary} />

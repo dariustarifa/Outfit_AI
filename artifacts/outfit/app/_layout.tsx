@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/src/context/AppContext";
+import { ThemeProvider, useTheme } from "@/src/theme";
 import { useFonts } from "expo-font";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 
@@ -29,8 +30,18 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
+    <ThemeProvider>
+      <ThemedAppShell />
+    </ThemeProvider>
+  );
+}
+
+function ThemedAppShell() {
+  const { colors, isDark } = useTheme();
+
+  return (
     <GestureHandlerRootView
-      style={{ flex: 1, backgroundColor: "#F5F2EB" }}
+      style={{ flex: 1, backgroundColor: colors.backgroundTop }}
     >
       <SafeAreaProvider style={styles.fill}>
         <GradientBackground style={StyleSheet.absoluteFill}>{null}</GradientBackground>
@@ -45,11 +56,11 @@ export default function RootLayout() {
             />
           </AppProvider>
         </ErrorBoundary>
-        <StatusBar style="dark" />
+        <StatusBar style={isDark ? "light" : "dark"} />
         {Platform.OS === "android" ? (
           <NativeStatusBar
             translucent
-            barStyle="dark-content"
+            barStyle={isDark ? "light-content" : "dark-content"}
             backgroundColor="transparent"
           />
         ) : null}

@@ -3,12 +3,12 @@ import { useState } from "react";
 import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useColors } from "@/src/theme";
+import { useTheme } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import { tapLight } from "@/src/haptics";
 
 export default function IntroScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { profile } = useApp();
   const [starting, setStarting] = useState(false);

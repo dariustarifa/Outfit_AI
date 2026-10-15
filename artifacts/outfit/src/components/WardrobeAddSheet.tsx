@@ -12,11 +12,8 @@ import * as ImagePicker from "expo-image-picker";
 import { Camera, ImagePlus, X } from "lucide-react-native";
 import { router } from "expo-router";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import {
-  nativeEffects,
-  nativeLayout,
-} from "@workspace/outfit-design-system/lib/native-theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
+import { useTheme } from "../theme";
 import { useApp } from "@/src/context/AppContext";
 import { selection, success } from "@/src/haptics";
 import { saveGallerySelection } from "@/src/gallery-save";
@@ -33,7 +30,7 @@ export function WardrobeAddSheet({
   onDismiss,
   onToast,
 }: WardrobeAddSheetProps) {
-  const colors = useColors();
+  const { colors } = useTheme();
   const { addItem } = useApp();
   const [busy, setBusy] = useState(false);
   const [mediaPermission, requestMediaPermission] =
@@ -159,7 +156,7 @@ export function WardrobeAddSheet({
                 borderRadius={nativeLayout.cardRadius}
                 style={[
                   styles.optionSurface,
-                  { borderColor: nativeEffects.glass.borderColor },
+                  { borderColor: colors.glassBorder },
                 ]}
               >
                 <View style={styles.optionContent}>
@@ -192,7 +189,7 @@ export function WardrobeAddSheet({
                 borderRadius={nativeLayout.cardRadius}
                 style={[
                   styles.optionSurface,
-                  { borderColor: nativeEffects.glass.borderColor },
+                  { borderColor: colors.glassBorder },
                 ]}
               >
                 <View style={styles.optionContent}>

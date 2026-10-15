@@ -34,7 +34,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { useTheme, type ThemeColors } from "../theme";
 import { useApp } from "../context/AppContext";
 import type { Profile } from "../types";
 import { success } from "../haptics";
@@ -114,7 +114,7 @@ function isProfileReady(profile: Profile): boolean {
 }
 
 export default function ProgressiveOnboardingScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { profile, loading, setProfile } = useApp();
   const initialized = useRef(false);
@@ -890,7 +890,7 @@ interface FormFieldProps {
   placeholder: string;
   onChangeText: (value: string) => void;
   accessibilityLabel: string;
-  colors: ReturnType<typeof useColors>;
+  colors: ThemeColors;
   icon?: React.ReactNode;
   keyboardType?: "number-pad" | "decimal-pad";
   returnKeyType: "next" | "done" | "search";
@@ -917,7 +917,7 @@ function FormField({
       <View
         style={[
           styles.inputShell,
-          { borderColor: colors.border, backgroundColor: colors.card },
+          { borderColor: colors.fieldBorder, backgroundColor: colors.fieldBg },
         ]}
       >
         {icon}

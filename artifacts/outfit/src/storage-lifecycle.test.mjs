@@ -138,6 +138,7 @@ for (const platform of ["ios", "android"]) {
     const originalProfile = {
       name: "Alex",
       preferredName: "A",
+      gender: "female",
       age: 30,
       heightCm: 170,
       bodyPhotoUri: "",

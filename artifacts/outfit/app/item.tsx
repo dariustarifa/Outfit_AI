@@ -21,15 +21,14 @@ import * as ImagePicker from "expo-image-picker";
 import { ArrowLeft, Camera, ImagePlus, Save, Trash2, X } from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import {
-  nativeEffects,
   nativeLayout,
 } from "@workspace/outfit-design-system/lib/native-theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { useTheme } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import { selection, success } from "@/src/haptics";
 
 export default function WardrobeItemScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { wardrobe, loading, addItem, updateItem, removeItem } = useApp();
@@ -243,7 +242,7 @@ export default function WardrobeItemScreen() {
                 style={[
                   styles.previewFrame,
                   {
-                    borderColor: nativeEffects.glass.borderColor,
+                    borderColor: colors.glassBorder,
                     backgroundColor: colors.muted,
                   },
                 ]}
@@ -335,8 +334,8 @@ export default function WardrobeItemScreen() {
                 styles.noteInput,
                 {
                   color: colors.textPrimary,
-                  borderColor: colors.border,
-                  backgroundColor: colors.card,
+                  borderColor: colors.fieldBorder,
+                  backgroundColor: colors.fieldBg,
                 },
               ]}
             />
@@ -413,7 +412,7 @@ function CameraCaptureModal({
   onClose: () => void;
   onCapture: (uri: string) => void;
 }) {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -445,7 +444,12 @@ function CameraCaptureModal({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <View style={[styles.cameraScreen, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.cameraScreen,
+          { backgroundColor: colors.cameraBackground },
+        ]}
+      >
         <View
           style={[
             styles.cameraSafeArea,
@@ -689,7 +693,7 @@ const styles = StyleSheet.create({
     left: "12%",
     right: "12%",
     bottom: "12%",
-    borderColor: "rgba(255,255,255,0.8)",
+    borderColor: "transparent",
     borderWidth: 1,
     borderRadius: 20,
   },

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -22,12 +23,91 @@ export function GradientBackground({
   style,
 }: GradientBackgroundProps) {
   const colors = useColors();
+  const instanceId = useId().replace(/:/g, "");
   const { width, height } = useWindowDimensions();
   const blobRadius = nativeEffects.ambient.diameter / 2;
   const viewBox = useMemo(() => `0 0 ${width} ${height}`, [width, height]);
+  const transition = useRef(new Animated.Value(1)).current;
+  const currentColors = useRef(colors);
+  const [layers, setLayers] = useState({ from: colors, to: colors });
+
+  useEffect(() => {
+    if (currentColors.current === colors) return;
+    currentColors.current = colors;
+    setLayers((current) => ({ from: current.to, to: colors }));
+    transition.setValue(0);
+    const animation = Animated.timing(transition, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    });
+    animation.start(({ finished }) => {
+      if (finished) setLayers({ from: colors, to: colors });
+    });
+    return () => animation.stop();
+  }, [colors, transition]);
+
+  const fromOpacity = transition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
+  const toOpacity = transition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
 
   return (
     <View style={[styles.container, style]}>
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { opacity: fromOpacity }]}
+      >
+        <BackgroundLayer
+          colors={layers.from}
+          width={width}
+          height={height}
+          viewBox={viewBox}
+          blobRadius={blobRadius}
+          idPrefix={`${instanceId}-previous`}
+        />
+      </Animated.View>
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { opacity: toOpacity }]}
+      >
+        <BackgroundLayer
+          colors={layers.to}
+          width={width}
+          height={height}
+          viewBox={viewBox}
+          blobRadius={blobRadius}
+          idPrefix={`${instanceId}-current`}
+        />
+      </Animated.View>
+      <View pointerEvents="box-none" style={styles.content}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+function BackgroundLayer({
+  colors,
+  width,
+  height,
+  viewBox,
+  blobRadius,
+  idPrefix,
+}: {
+  colors: ReturnType<typeof useColors>;
+  width: number;
+  height: number;
+  viewBox: string;
+  blobRadius: number;
+  idPrefix: string;
+}) {
+  return (
+    <>
       <LinearGradient
         pointerEvents="none"
         colors={[colors.backgroundTop, colors.backgroundBottom]}
@@ -43,7 +123,7 @@ export function GradientBackground({
         style={[StyleSheet.absoluteFill, styles.backgroundLayer]}
       >
         <Defs>
-          <RadialGradient id="outfit-sand" cx="50%" cy="50%" r="50%">
+          <RadialGradient id={`${idPrefix}-sand`} cx="50%" cy="50%" r="50%">
             <Stop
               offset="0%"
               stopColor={colors.blobSand}
@@ -51,7 +131,7 @@ export function GradientBackground({
             />
             <Stop offset="100%" stopColor={colors.blobSand} stopOpacity="0" />
           </RadialGradient>
-          <RadialGradient id="outfit-gold" cx="50%" cy="50%" r="50%">
+          <RadialGradient id={`${idPrefix}-gold`} cx="50%" cy="50%" r="50%">
             <Stop
               offset="0%"
               stopColor={colors.blobGold}
@@ -59,7 +139,7 @@ export function GradientBackground({
             />
             <Stop offset="100%" stopColor={colors.blobGold} stopOpacity="0" />
           </RadialGradient>
-          <RadialGradient id="outfit-sage" cx="50%" cy="50%" r="50%">
+          <RadialGradient id={`${idPrefix}-sage`} cx="50%" cy="50%" r="50%">
             <Stop
               offset="0%"
               stopColor={colors.blobSage}
@@ -72,25 +152,22 @@ export function GradientBackground({
           cx={width * 0.2}
           cy={height * 0.84}
           r={blobRadius}
-          fill="url(#outfit-sand)"
+          fill={`url(#${idPrefix}-sand)`}
         />
         <Circle
           cx={width * 0.82}
           cy={height * 0.84}
           r={blobRadius}
-          fill="url(#outfit-gold)"
+          fill={`url(#${idPrefix}-gold)`}
         />
         <Circle
           cx={width * 0.78}
           cy={height * 0.66}
           r={blobRadius}
-          fill="url(#outfit-sage)"
+          fill={`url(#${idPrefix}-sage)`}
         />
       </Svg>
-      <View pointerEvents="box-none" style={styles.content}>
-        {children}
-      </View>
-    </View>
+    </>
   );
 }
 

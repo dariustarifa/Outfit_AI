@@ -1,2 +1,3 @@
 - [Expo font-gated preview](expo-font-preview.md) — Replit's Expo web capture may run before local fonts finish loading; verify the delayed render without weakening the gate.
 - [Expo storage tests](expo-storage-tests.md) — Keep native platform adapters out of Node-run unit-test imports; test injectable platform-neutral storage logic.
+- [Cross-platform appearance override](appearance-mode-web.md) — Web needs the shared design-system color override; call Appearance.setColorScheme only on native.

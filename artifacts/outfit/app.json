@@ -6,13 +6,13 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "outfit",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#F5F2EB",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F4F1EA",
     "splash": {
       "image": "./assets/images/icon.png",
       "imageWidth": 150,
       "resizeMode": "contain",
-      "backgroundColor": "#F5F2EB"
+      "backgroundColor": "#F4F1EA"
     },
     "ios": {
       "supportsTablet": false

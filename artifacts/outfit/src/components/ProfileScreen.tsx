@@ -26,11 +26,8 @@ import {
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import {
-  nativeEffects,
-  nativeLayout,
-} from "@workspace/outfit-design-system/lib/native-theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
+import { useTheme, type ThemeMode } from "../theme";
 import { useApp } from "@/src/context/AppContext";
 import type { Gender, Profile, ProfileUpdate, WardrobeItem } from "@/src/types";
 import { formatCity, searchCities, type CityResult } from "@/src/services/geocoding";
@@ -41,6 +38,13 @@ import {
   genderOptions,
   GenderOptionCard,
 } from "./GenderOptionCard";
+import { WhiteChip } from "./WhiteChip";
+
+const appearanceOptions: { value: ThemeMode; label: string }[] = [
+  { value: "light", label: "Claro" },
+  { value: "dark", label: "Oscuro" },
+  { value: "system", label: "Automático" },
+];
 
 type EditableField =
   | "name"
@@ -69,8 +73,8 @@ type SearchState = "idle" | "waiting" | "loading" | "success" | "error";
 interface RowColors {
   textPrimary: string;
   textSecondary: string;
-  border: string;
-  card: string;
+  fieldBorder: string;
+  fieldBg: string;
 }
 
 function emptyForm(): ProfileForm {
@@ -163,7 +167,7 @@ function ProfileInput({
       <View
         style={[
           styles.inputShell,
-          { borderColor: colors.border, backgroundColor: colors.card },
+          { borderColor: colors.fieldBorder, backgroundColor: colors.fieldBg },
           multiline && styles.multilineShell,
         ]}
       >
@@ -192,7 +196,7 @@ function ProfileInput({
 }
 
 export function ProfileScreen() {
-  const colors = useColors();
+  const { colors, mode, setMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const screenHeight = Dimensions.get("screen").height;
@@ -572,7 +576,7 @@ export function ProfileScreen() {
         <GlassView
           style={[
             styles.dataCard,
-            { borderColor: nativeEffects.glass.borderColor },
+            { borderColor: colors.glassBorder },
           ]}
         >
           {profileRows.map((row, index) => (
@@ -626,6 +630,61 @@ export function ProfileScreen() {
               <ChevronRight size={18} color={colors.textSecondary} />
             </Pressable>
           ))}
+        </GlassView>
+
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+          Apariencia
+        </Text>
+        <GlassView style={styles.appearanceControl}>
+          {appearanceOptions.map((option) => {
+            const selected = mode === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                accessibilityLabel={option.label}
+                testID={`appearance-${option.value}`}
+                onPress={() => {
+                  void selection();
+                  void setMode(option.value).catch(() => {
+                    Alert.alert(
+                      "No se pudo guardar",
+                      "No se pudo guardar tu preferencia de apariencia. Inténtalo de nuevo.",
+                    );
+                  });
+                }}
+                style={({ pressed }) => [
+                  styles.appearanceOption,
+                  pressed && styles.pressed,
+                ]}
+              >
+                {selected ? (
+                  <WhiteChip style={styles.appearanceSelected}>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.appearanceLabel,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </WhiteChip>
+                ) : (
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.appearanceLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                )}
+              </Pressable>
+            );
+          })}
         </GlassView>
 
         <Text style={[styles.sectionTitle, styles.wardrobeTitle, { color: colors.textPrimary }]}>
@@ -826,7 +885,7 @@ export function ProfileScreen() {
                             <GlassView
                               style={[
                                 styles.cityResults,
-                                { borderColor: nativeEffects.glass.borderColor },
+                                { borderColor: colors.glassBorder },
                               ]}
                             >
                               {cityResults.map((city, index) => (
@@ -1077,6 +1136,31 @@ const styles = StyleSheet.create({
   dataCard: {
     overflow: "hidden",
     marginBottom: nativeLayout.baseSpacing * 6,
+  },
+  appearanceControl: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: nativeLayout.baseSpacing,
+    padding: nativeLayout.baseSpacing,
+    marginBottom: nativeLayout.baseSpacing * 6,
+  },
+  appearanceOption: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: nativeLayout.pillRadius,
+  },
+  appearanceSelected: {
+    width: "100%",
+    height: 44,
+    borderRadius: nativeLayout.pillRadius,
+  },
+  appearanceLabel: {
+    fontFamily: "Satoshi_500Medium",
+    fontSize: 14,
+    textAlign: "center",
   },
   profileRow: {
     minHeight: 72,

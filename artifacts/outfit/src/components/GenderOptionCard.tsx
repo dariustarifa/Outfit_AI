@@ -8,8 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Check } from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import { nativeLayout } from "../theme";
-import { useColors } from "../theme";
+import { nativeLayout, useTheme } from "../theme";
 import { selection } from "../haptics";
 import { WhiteChip } from "./WhiteChip";
 import type { Gender } from "../types";
@@ -42,7 +41,7 @@ export function GenderOptionCard({
   testID,
   entranceDelay = 0,
 }: GenderOptionCardProps) {
-  const colors = useColors();
+  const { colors } = useTheme();
   const selectionProgress = useSharedValue(selected ? 1 : 0);
   const selectedSurfaceStyle = useAnimatedStyle(() => ({
     opacity: selectionProgress.value,

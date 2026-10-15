@@ -3,15 +3,14 @@ import { Redirect, router } from "expo-router";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useColors } from "@/src/theme";
-import { nativeLayout } from "@/src/theme";
+import { nativeLayout, useTheme } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import { success } from "@/src/haptics";
 import type { Gender } from "@/src/types";
 import { genderOptions, GenderOptionCard } from "@/src/components/GenderOptionCard";
 
 export default function GenderOnboardingScreen() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { profile, loading, updateProfile } = useApp();
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);

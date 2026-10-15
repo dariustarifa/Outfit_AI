@@ -45,7 +45,7 @@ import {
   BAR_WIDTH,
   nativeLayout,
   radius,
-  useColors,
+  useTheme,
 } from "../theme";
 import { success, tapLight } from "../haptics";
 import { WardrobeAddSheet } from "./WardrobeAddSheet";
@@ -81,7 +81,7 @@ function makeAttachment(
 }
 
 export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const pathname = usePathname();
@@ -506,7 +506,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                     styles.input,
                     {
                       color: colors.textPrimary,
-                      backgroundColor: colors.background,
+                      backgroundColor: colors.fieldBg,
                       height: inputHeight,
                     },
                   ]}

@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@workspace/outfit-design-system/hooks/use-colors';
+import { useTheme } from '@/src/theme';
 import { reloadAppAsync } from 'expo';
 import {
   CircleAlert as CircleAlertIcon,
@@ -21,7 +21,7 @@ export type ErrorFallbackProps = {
 };
 
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -96,6 +96,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             styles.button,
             {
               backgroundColor: colors.primary,
+              shadowColor: colors.textPrimary,
               opacity: pressed ? 0.9 : 1,
               transform: [{ scale: pressed ? 0.97 : 1 }],
             },
@@ -239,7 +240,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 24,
     minWidth: 200,
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,

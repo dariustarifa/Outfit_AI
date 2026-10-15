@@ -22,7 +22,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
-import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
+import { useTheme } from "../theme";
 import { useApp } from "../context/AppContext";
 import type { Profile, ProfileUpdate } from "../types";
 import { success } from "../haptics";
@@ -69,7 +69,7 @@ function suggestedName(name: string): string {
 }
 
 export function ProfileEditor() {
-  const colors = useColors();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { profile, updateProfile } = useApp();
   const [form, setForm] = useState<ProfileForm>(() =>
@@ -482,6 +482,8 @@ interface FieldColors {
   textSecondary: string;
   border: string;
   card: string;
+  fieldBorder: string;
+  fieldBg: string;
 }
 
 interface ProfileFieldProps {
@@ -517,7 +519,7 @@ function ProfileField({
       <View
         style={[
           styles.inputShell,
-          { borderColor: colors.border, backgroundColor: colors.card },
+          { borderColor: colors.fieldBorder, backgroundColor: colors.fieldBg },
         ]}
       >
         {icon}
