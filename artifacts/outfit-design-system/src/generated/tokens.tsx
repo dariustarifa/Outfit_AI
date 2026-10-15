@@ -1,5 +1,5 @@
 /* GENERATED FROM tokens.json -- DO NOT EDIT. Run scripts/build-tokens.mjs. */
-// Portable design tokens (colors as hex). Web consumes the theme via
+// Portable design tokens. Alpha colors preserve their source values. Web consumes the theme via
 // src/index.css; mobile (Expo) and any other platform import this object so the
 // whole product shares one source of truth.
 export const tokens = {
@@ -36,41 +36,43 @@ export const tokens = {
       "sidebarPrimaryForeground": "#F4F1EA",
       "sidebarAccent": "#E5D8C8",
       "sidebarAccentForeground": "#2E2D30",
-      "sidebarRing": "#B19B63"
+      "sidebarRing": "#B19B63",
+      "edgeShade": "rgba(0,0,0,0.10)"
     },
     "dark": {
-      "background": "#2B2826",
-      "foreground": "#F4F1EA",
-      "border": "#4A3D31",
-      "card": "#2B2826",
-      "cardForeground": "#F4F1EA",
-      "popover": "#2B2826",
-      "popoverForeground": "#F4F1EA",
-      "primary": "#F4F1EA",
-      "primaryForeground": "#1E1C1A",
-      "secondary": "#1B1917",
-      "secondaryForeground": "#F4F1EA",
-      "muted": "#4A3D31",
-      "mutedForeground": "#B3ADA4",
+      "background": "#222831",
+      "foreground": "#EDF0F5",
+      "border": "#33445A",
+      "card": "#222831",
+      "cardForeground": "#EDF0F5",
+      "popover": "#222831",
+      "popoverForeground": "#EDF0F5",
+      "primary": "#EDF0F5",
+      "primaryForeground": "#151A21",
+      "secondary": "#11151B",
+      "secondaryForeground": "#EDF0F5",
+      "muted": "#33445A",
+      "mutedForeground": "#A9B1BD",
       "accent": "#D4BC86",
-      "accentForeground": "#1E1C1A",
+      "accentForeground": "#151A21",
       "destructive": "#E57373",
-      "destructiveForeground": "#1E1C1A",
-      "input": "#2B2826",
+      "destructiveForeground": "#151A21",
+      "input": "#222831",
       "ring": "#D4BC86",
       "chart1": "#D4BC86",
-      "chart2": "#4A3D31",
-      "chart3": "#4A3D31",
-      "chart4": "#5E4B2C",
-      "chart5": "#B3ADA4",
-      "sidebar": "#2B2826",
-      "sidebarForeground": "#F4F1EA",
-      "sidebarBorder": "#4A3D31",
+      "chart2": "#33445A",
+      "chart3": "#33445A",
+      "chart4": "#3D4F6B",
+      "chart5": "#A9B1BD",
+      "sidebar": "#222831",
+      "sidebarForeground": "#EDF0F5",
+      "sidebarBorder": "#33445A",
       "sidebarPrimary": "#D4BC86",
-      "sidebarPrimaryForeground": "#1E1C1A",
-      "sidebarAccent": "#4A3D31",
-      "sidebarAccentForeground": "#F4F1EA",
-      "sidebarRing": "#C9B27A"
+      "sidebarPrimaryForeground": "#151A21",
+      "sidebarAccent": "#33445A",
+      "sidebarAccentForeground": "#EDF0F5",
+      "sidebarRing": "#D4BC86",
+      "edgeShade": "rgba(0,0,0,0.55)"
     }
   },
   "fontFamily": {

@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Dimensions,
   Image,
-  PanResponder,
   Platform,
   Pressable,
-  type GestureResponderEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,7 +12,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import {
   CalendarDays,
@@ -29,13 +26,10 @@ import {
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import {
-  nativeEffects,
-  nativeLayout,
-} from "@workspace/outfit-design-system/lib/native-theme";
-import { useGlassEffectLevel, setGlassEffectLevel as setSharedGlassEffectLevel, normalizeGlassEffectLevel } from "@workspace/outfit-design-system/hooks/use-glass-effect";
+import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { useTheme, type ThemeMode, type ThemeColors } from "../theme";
-import { persistGlassEffectLevel } from "../theme-mode";
+import { useSettings } from "../context/SettingsContext";
+import type { GlassLevel } from "../theme-mode";
 import { useApp } from "@/src/context/AppContext";
 import type { Gender, Profile, ProfileUpdate, WardrobeItem } from "@/src/types";
 import { formatCity, searchCities, type CityResult } from "@/src/services/geocoding";
@@ -52,6 +46,12 @@ const appearanceOptions: { value: ThemeMode; label: string }[] = [
   { value: "light", label: "Claro" },
   { value: "dark", label: "Oscuro" },
   { value: "system", label: "Automático" },
+];
+
+const glassLevelOptions: { value: GlassLevel; label: string }[] = [
+  { value: "clear", label: "Cristalino" },
+  { value: "medium", label: "Intermedio" },
+  { value: "matte", label: "Mate" },
 ];
 
 type EditableField =
@@ -201,27 +201,10 @@ function ProfileInput({
 
 export function ProfileScreen() {
   const { colors, mode, setMode } = useTheme();
-  const glassEffectLevel = useGlassEffectLevel();
+  const { glassLevel, setGlassLevel } = useSettings();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const screenHeight = Dimensions.get("screen").height;
-  const updateGlassEffect = useCallback((level: number) => {
-    setSharedGlassEffectLevel(level);
-  }, []);
-  const saveGlassEffect = useCallback(async (level: number) => {
-    try {
-      await persistGlassEffectLevel(
-        AsyncStorage,
-        level,
-        nativeEffects.glass.defaultIntensity,
-      );
-    } catch {
-      Alert.alert(
-        "No se pudo guardar",
-        "No se pudo guardar la intensidad del cristal. Inténtalo de nuevo.",
-      );
-    }
-  }, []);
   const {
     profile,
     wardrobe,
@@ -709,16 +692,90 @@ export function ProfileScreen() {
               );
             })}
           </View>
-          <View style={styles.glassEffectControl}>
-            <Text style={[styles.glassEffectLabel, { color: colors.textPrimary }]}>
-              Efecto cristal
+          <View style={styles.glassLevelControl}>
+            <View style={styles.glassLevelOptions}>
+              {glassLevelOptions.map((option) => {
+                const selected = glassLevel === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={option.label}
+                    testID={`glass-level-${option.value}`}
+                    onPress={() => {
+                      void selection();
+                      void setGlassLevel(option.value).catch(() => {
+                        Alert.alert(
+                          "No se pudo guardar",
+                          "No se pudo guardar tu preferencia de cristal. Inténtalo de nuevo.",
+                        );
+                      });
+                    }}
+                    style={({ pressed }) => [
+                      styles.glassLevelOption,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {selected ? (
+                      <WhiteChip style={styles.glassLevelSelected}>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.glassLevelLabel,
+                            { color: colors.onChip },
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </WhiteChip>
+                    ) : (
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.glassLevelLabel,
+                          { color: colors.textMuted },
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={[styles.glassLevelCaption, { color: colors.textMuted }]}>
+              Cristalino deja ver el fondo; Mate es más opaco y difuminado.
             </Text>
-            <GlassEffectSlider
-              value={glassEffectLevel}
-              colors={colors}
-              onChange={updateGlassEffect}
-              onCommit={saveGlassEffect}
-            />
+            <View
+              style={[
+                styles.glassPreviewBackdrop,
+                { backgroundColor: colors.blobA },
+              ]}
+            >
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.glassPreviewStrip,
+                  { backgroundColor: colors.blobB },
+                ]}
+              />
+              <GlassView
+                borderRadius={28}
+                edge
+                shadow={false}
+                style={styles.glassPreview}
+              >
+                <Text
+                  style={[
+                    styles.glassPreviewText,
+                    { color: colors.text },
+                  ]}
+                >
+                  Vista previa
+                </Text>
+              </GlassView>
+            </View>
           </View>
         </GlassView>
 
@@ -1147,164 +1204,6 @@ export function ProfileScreen() {
   );
 }
 
-interface GlassEffectSliderProps {
-  value: number;
-  colors: ThemeColors;
-  onChange: (value: number) => void;
-  onCommit: (value: number) => void | Promise<void>;
-}
-
-function GlassEffectSlider({
-  value,
-  colors,
-  onChange,
-  onCommit,
-}: GlassEffectSliderProps) {
-  const trackRef = useRef<View>(null);
-  const trackLeft = useRef(0);
-  const trackWidth = useRef(1);
-  const valueRef = useRef(value);
-  const [measuredWidth, setMeasuredWidth] = useState(0);
-
-  useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
-
-  const updateFromPageX = useCallback(
-    (pageX: number) => {
-      const next = normalizeGlassEffectLevel(
-        (pageX - trackLeft.current) / Math.max(1, trackWidth.current),
-      );
-      valueRef.current = next;
-      onChange(next);
-    },
-    [onChange],
-  );
-
-  const handleTrackLayout = useCallback((width: number) => {
-    trackWidth.current = width;
-    setMeasuredWidth(width);
-    trackRef.current?.measureInWindow((x) => {
-      trackLeft.current = x;
-    });
-  }, []);
-
-  const handleTrackPress = useCallback(
-    (event: GestureResponderEvent) => {
-      updateFromPageX(event.nativeEvent.pageX);
-      void onCommit(valueRef.current);
-    },
-    [onCommit, updateFromPageX],
-  );
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (_event, gesture) =>
-          Math.abs(gesture.dx) > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-        onMoveShouldSetPanResponderCapture: (_event, gesture) =>
-          Math.abs(gesture.dx) > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-        onPanResponderGrant: (event) =>
-          updateFromPageX(event.nativeEvent.pageX),
-        onPanResponderMove: (event) =>
-          updateFromPageX(event.nativeEvent.pageX),
-        onPanResponderRelease: (event) => {
-          updateFromPageX(event.nativeEvent.pageX);
-          void onCommit(valueRef.current);
-        },
-        onPanResponderTerminate: () => {
-          void onCommit(valueRef.current);
-        },
-      }),
-    [onCommit, updateFromPageX],
-  );
-
-  const handleAccessibilityAction = useCallback(
-    (event: { nativeEvent: { actionName: string } }) => {
-      const step = event.nativeEvent.actionName === "increment" ? 0.05 : -0.05;
-      const next = normalizeGlassEffectLevel(valueRef.current + step);
-      valueRef.current = next;
-      onChange(next);
-      void onCommit(next);
-    },
-    [onChange, onCommit],
-  );
-
-  const sliderInset = nativeLayout.baseSpacing * 3;
-  const thumbSize = nativeLayout.baseSpacing * 6;
-  const trackValueWidth = Math.max(0, measuredWidth - thumbSize);
-  const thumbLeft = sliderInset + trackValueWidth * value;
-  const valueLabel =
-    value < 0.34 ? "Líquido" : value > 0.66 ? "Frosted" : "Intermedio";
-
-  return (
-    <View style={styles.glassSliderControl}>
-      <View style={styles.glassSliderLabels}>
-        <Text style={[styles.glassSliderLabel, { color: colors.textSecondary }]}>
-          Líquido
-        </Text>
-        <Text style={[styles.glassSliderLabel, { color: colors.textSecondary }]}>
-          Frosted
-        </Text>
-      </View>
-      <View
-        ref={trackRef}
-        onLayout={(event) => handleTrackLayout(event.nativeEvent.layout.width)}
-        {...panResponder.panHandlers}
-        style={styles.glassSliderTouchArea}
-      >
-        <Pressable
-          accessibilityRole="adjustable"
-          accessibilityLabel="Intensidad del efecto cristal"
-          accessibilityValue={{
-            min: 0,
-            max: 100,
-            now: Math.round(value * 100),
-            text: valueLabel,
-          }}
-          accessibilityActions={[
-            { name: "increment", label: "Más frosted" },
-            { name: "decrement", label: "Más líquido" },
-          ]}
-          onAccessibilityAction={handleAccessibilityAction}
-          onPress={handleTrackPress}
-          style={StyleSheet.absoluteFill}
-        >
-          <View
-            pointerEvents="none"
-            style={[
-              styles.glassSliderRail,
-              { backgroundColor: colors.secondary },
-            ]}
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              styles.glassSliderProgress,
-              {
-                width: trackValueWidth * value,
-                backgroundColor: colors.gold,
-              },
-            ]}
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              styles.glassSliderThumb,
-              {
-                left: thumbLeft,
-                backgroundColor: colors.backgroundTop,
-                borderColor: colors.gold,
-              },
-            ]}
-          />
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   sheetLayer: {
@@ -1340,48 +1239,59 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: nativeLayout.baseSpacing,
   },
-  glassEffectControl: {
-    gap: nativeLayout.baseSpacing * 2,
+  glassLevelControl: {
+    gap: nativeLayout.baseSpacing * 3,
   },
-  glassEffectLabel: {
-    fontFamily: "Satoshi_700Bold",
-    fontSize: 14,
-  },
-  glassSliderControl: {
+  glassLevelOptions: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: nativeLayout.baseSpacing,
   },
-  glassSliderLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  glassLevelOption: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: nativeLayout.pillRadius,
   },
-  glassSliderLabel: {
+  glassLevelSelected: {
+    width: "100%",
+    minHeight: 40,
+    paddingHorizontal: nativeLayout.baseSpacing * 2,
+    borderRadius: nativeLayout.pillRadius,
+  },
+  glassLevelLabel: {
     fontFamily: "Satoshi_500Medium",
-    fontSize: 12,
+    fontSize: 13,
+    textAlign: "center",
   },
-  glassSliderTouchArea: {
-    height: nativeLayout.primaryButtonHeight,
+  glassLevelCaption: {
+    fontFamily: "Satoshi_400Regular",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  glassPreviewBackdrop: {
+    height: 72,
+    borderRadius: 28,
+    overflow: "hidden",
     justifyContent: "center",
   },
-  glassSliderRail: {
+  glassPreviewStrip: {
     position: "absolute",
-    left: nativeLayout.baseSpacing * 3,
-    right: nativeLayout.baseSpacing * 3,
-    height: nativeLayout.baseSpacing,
-    borderRadius: nativeLayout.pillRadius,
+    top: 22,
+    left: 0,
+    right: 0,
+    height: 28,
   },
-  glassSliderProgress: {
-    position: "absolute",
-    left: nativeLayout.baseSpacing * 3,
-    height: nativeLayout.baseSpacing,
-    borderRadius: nativeLayout.pillRadius,
+  glassPreview: {
+    height: 72,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  glassSliderThumb: {
-    position: "absolute",
-    width: nativeLayout.baseSpacing * 6,
-    height: nativeLayout.baseSpacing * 6,
-    marginLeft: -(nativeLayout.baseSpacing * 3),
-    borderWidth: 1,
-    borderRadius: nativeLayout.pillRadius,
+  glassPreviewText: {
+    fontFamily: "Satoshi_500Medium",
+    fontSize: 15,
   },
   appearanceOption: {
     flex: 1,

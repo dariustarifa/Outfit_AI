@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from "react";
 import { nativeEffects } from "../lib/native-theme";
 
-let glassEffectLevel: number = nativeEffects.glass.defaultIntensity;
+export type GlassLevel = "clear" | "medium" | "matte";
+
+let glassLevel: GlassLevel = nativeEffects.glass.defaultLevel;
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
@@ -9,26 +11,27 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-function getSnapshot() {
-  return glassEffectLevel;
+function getSnapshot(): GlassLevel {
+  return glassLevel;
 }
 
-export function normalizeGlassEffectLevel(value: number): number {
-  if (!Number.isFinite(value)) return nativeEffects.glass.defaultIntensity;
-  return Math.round(Math.max(0, Math.min(1, value)) * 100) / 100;
+export function normalizeGlassLevel(value: string): GlassLevel {
+  return value === "clear" || value === "medium" || value === "matte"
+    ? value
+    : nativeEffects.glass.defaultLevel;
 }
 
-export function setGlassEffectLevel(value: number) {
-  const nextLevel = normalizeGlassEffectLevel(value);
-  if (glassEffectLevel === nextLevel) return;
-  glassEffectLevel = nextLevel;
+export function setGlassLevel(value: GlassLevel) {
+  const nextLevel = normalizeGlassLevel(value);
+  if (glassLevel === nextLevel) return;
+  glassLevel = nextLevel;
   listeners.forEach((listener) => listener());
 }
 
-export function useGlassEffectLevel() {
+export function useGlassLevel() {
   return useSyncExternalStore(
     subscribe,
     getSnapshot,
-    () => nativeEffects.glass.defaultIntensity,
+    () => nativeEffects.glass.defaultLevel,
   );
 }

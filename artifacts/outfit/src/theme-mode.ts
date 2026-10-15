@@ -1,7 +1,9 @@
 export type ThemeMode = "light" | "dark" | "system";
+export type GlassLevel = "clear" | "medium" | "matte";
 
 export const THEME_MODE_KEY = "themeMode";
-export const GLASS_EFFECT_LEVEL_KEY = "glassEffectLevel";
+export const GLASS_LEVEL_KEY = "glassLevel";
+export const DEFAULT_GLASS_LEVEL: GlassLevel = "clear";
 
 export interface ThemeModeStorage {
   getItem: (key: string) => Promise<string | null>;
@@ -32,30 +34,20 @@ export async function persistThemeMode(
   await storage.setItem(THEME_MODE_KEY, mode);
 }
 
-export function normalizeStoredGlassEffectLevel(
-  value: number,
-  fallback: number,
-): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.round(Math.max(0, Math.min(1, value)) * 100) / 100;
+export function isGlassLevel(value: string | null): value is GlassLevel {
+  return value === "clear" || value === "medium" || value === "matte";
 }
 
-export async function loadGlassEffectLevel(
+export async function loadGlassLevel(
   storage: Pick<ThemeModeStorage, "getItem">,
-  fallback: number,
-): Promise<number> {
-  const savedLevel = await storage.getItem(GLASS_EFFECT_LEVEL_KEY);
-  if (savedLevel === null || savedLevel.trim() === "") return fallback;
-  const parsed = Number(savedLevel);
-  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return fallback;
-  return normalizeStoredGlassEffectLevel(parsed, fallback);
+): Promise<GlassLevel> {
+  const savedLevel = await storage.getItem(GLASS_LEVEL_KEY);
+  return isGlassLevel(savedLevel) ? savedLevel : DEFAULT_GLASS_LEVEL;
 }
 
-export async function persistGlassEffectLevel(
+export async function persistGlassLevel(
   storage: Pick<ThemeModeStorage, "setItem">,
-  level: number,
-  fallback: number,
+  level: GlassLevel,
 ): Promise<void> {
-  const normalized = normalizeStoredGlassEffectLevel(level, fallback);
-  await storage.setItem(GLASS_EFFECT_LEVEL_KEY, normalized.toString());
+  await storage.setItem(GLASS_LEVEL_KEY, level);
 }

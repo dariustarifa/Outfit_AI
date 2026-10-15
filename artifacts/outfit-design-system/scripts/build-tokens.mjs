@@ -37,13 +37,25 @@ function resolveValue(node, tokens) {
 }
 
 function hexToHslChannels(hex) {
-  let h = hex.replace("#", "").trim();
+  const rgba = hex.match(
+    /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/i,
+  );
+  let h = rgba
+    ? [rgba[1], rgba[2], rgba[3]]
+        .map((channel) => Number(channel).toString(16).padStart(2, "0"))
+        .join("")
+    : hex.replace("#", "").trim();
   if (h.length === 3) {
     h = h
       .split("")
       .map((c) => c + c)
       .join("");
   }
+  const alpha = rgba?.[4]
+    ? Number(rgba[4])
+    : h.length === 8
+      ? Math.round((parseInt(h.slice(6, 8), 16) / 255) * 1000) / 1000
+      : null;
   const r = parseInt(h.slice(0, 2), 16) / 255;
   const g = parseInt(h.slice(2, 4), 16) / 255;
   const b = parseInt(h.slice(4, 6), 16) / 255;
@@ -70,7 +82,9 @@ function hexToHslChannels(hex) {
   const H = Math.round(hue * 360);
   const S = Math.round(s * 1000) / 10;
   const L = Math.round(l * 1000) / 10;
-  return `${H} ${S}% ${L}%`;
+  return alpha === null
+    ? `${H} ${S}% ${L}%`
+    : `${H} ${S}% ${L}% / ${alpha}`;
 }
 
 function toFontStack(value) {
@@ -190,7 +204,7 @@ function buildTs(tokens) {
     spacing: resolveValue(tokens.spacing.base, tokens),
   };
   return `/* GENERATED FROM tokens.json -- DO NOT EDIT. Run scripts/build-tokens.mjs. */
-// Portable design tokens (colors as hex). Web consumes the theme via
+// Portable design tokens. Alpha colors preserve their source values. Web consumes the theme via
 // src/index.css; mobile (Expo) and any other platform import this object so the
 // whole product shares one source of truth.
 export const tokens = ${JSON.stringify(portable, null, 2)} as const;

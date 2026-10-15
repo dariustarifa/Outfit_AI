@@ -37,8 +37,8 @@ Import the shared mobile primitives directly:
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import {
-  setGlassEffectLevel,
-  useGlassEffectLevel,
+  setGlassLevel,
+  useGlassLevel,
 } from "@workspace/outfit-design-system/hooks/use-glass-effect";
 ```
 
@@ -47,9 +47,13 @@ the workspace package through pnpm symlinks. Do not copy source or token values.
 Loose binary assets may still need copying into Expo because Metro does not
 watch sibling artifact folders by default.
 
-`useGlassEffectLevel()` reads the shared Liquid-to-Frosted intensity. Use
-`setGlassEffectLevel(value)` to update all native glass surfaces; persist the
-consumer's selected value in its own app storage.
+`useGlassLevel()` reads the shared `clear`, `medium`, or `matte` preset.
+`setGlassLevel(level)` updates all native glass surfaces; persist the selected
+value in the consuming app's settings provider.
+
+`GlassView` accepts `edge` (default `true`) and `shadow` (default `false`).
+Shadows should be reserved for surfaces that need elevation; keep the clipped
+glass and its edge overlays separate from the outer shadow wrapper.
 
 ## Dependencies and assets
 
@@ -57,8 +61,10 @@ Metro resolves the workspace package through pnpm symlinks. Do not copy source
 or token values. Loose binary assets may still need copying into Expo because
 Metro does not watch sibling artifact folders by default.
 
-Set `app.json`'s literal `splash.backgroundColor` from
-`tokens.color.light.background` and keep it synchronized when that token changes.
+Expo splash colors are build-time settings and cannot follow a user's saved
+runtime theme. Set a static splash color only when the consumer wants that
+startup tradeoff; the runtime app background should use `SystemUI` and the
+resolved theme.
 
 ## Resolve the color scheme once
 

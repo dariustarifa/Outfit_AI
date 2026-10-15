@@ -20,12 +20,10 @@ import {
   ArrowRight,
   ArrowUp,
   FileText,
-  Home,
   Paperclip,
-  Plus,
-  User,
   X,
 } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 import {
   getTabNavigationAction,
@@ -449,6 +447,8 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
           >
             <GlassView
               borderRadius={radius.panel}
+              edge
+              shadow={false}
               style={StyleSheet.absoluteFill}
             >
               <View style={StyleSheet.absoluteFill} />
@@ -600,6 +600,8 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
           >
             <GlassView
               borderRadius={radius.control}
+              edge
+              shadow
               style={[styles.tabBar, { width: barWidth }]}
             >
               <View style={styles.tabBarContent}>
@@ -623,10 +625,10 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
-                  <Home
-                    size={26}
+                  <Ionicons
+                    name="home"
+                    size={28}
                     color={!isProfile ? colors.gold : colors.iconInactive}
-                    strokeWidth={1.5}
                   />
                 </Pressable>
                 <Pressable
@@ -638,7 +640,11 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
-                  <Plus size={26} color={colors.iconInactive} strokeWidth={1.5} />
+                  <Ionicons
+                    name="add-circle"
+                    size={28}
+                    color={colors.iconInactive}
+                  />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -650,10 +656,10 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
-                  <User
-                    size={26}
+                  <Ionicons
+                    name="person"
+                    size={28}
                     color={isProfile ? colors.gold : colors.iconInactive}
-                    strokeWidth={1.5}
                   />
                 </Pressable>
               </View>
@@ -794,7 +800,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   tabBarClip: {
-    overflow: "hidden",
+    overflow: "visible",
     width: "100%",
     alignItems: "center",
   },

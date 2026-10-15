@@ -36,36 +36,37 @@ function extendPalette<T extends Record<string, string>>(
       mode === "dark"
         ? "rgba(255,255,255,0.22)"
         : "rgba(255,255,255,0.75)",
+    edgeShade: palette.edgeShade,
     fieldBg:
       mode === "dark"
-        ? "rgba(255,255,255,0.08)"
+        ? "rgba(255,255,255,0.07)"
         : "rgba(255,255,255,0.5)",
     fieldBorder:
       mode === "dark"
-        ? "rgba(255,255,255,0.18)"
+        ? "rgba(255,255,255,0.16)"
         : "rgba(255,255,255,0.7)",
-    placeholder: mode === "dark" ? "#969189" : "#6B6761",
+    placeholder: mode === "dark" ? "#8993A1" : "#6B6761",
     danger: palette.destructive,
     primaryBg: palette.primary,
     onPrimary: palette.primaryForeground,
-    onGold: mode === "dark" ? "#1E1C1A" : palette.foreground,
+    onGold: mode === "dark" ? "#151A21" : palette.foreground,
     onChip: palette.foreground,
     chipBg:
       mode === "dark"
-        ? "rgba(255,255,255,0.16)"
+        ? "rgba(255,255,255,0.14)"
         : palette.background,
     chipBorder:
       mode === "dark"
-        ? "rgba(255,255,255,0.30)"
+        ? "rgba(255,255,255,0.26)"
         : "rgba(255,255,255,0.75)",
     backdrop:
       mode === "dark"
-        ? "rgba(0,0,0,0.45)"
+        ? "rgba(0,0,0,0.5)"
         : "rgba(0,0,0,0.12)",
     cameraBackground: "#000000",
     cameraForeground: "#FFFFFF",
     cameraActionBg: "#FFFFFF",
-    cameraActionText: "#1E1C1A",
+    cameraActionText: mode === "dark" ? "#151A21" : "#1E1C1A",
     cameraGlassBorder: "rgba(255,255,255,0.22)",
   };
 }
@@ -85,24 +86,62 @@ export const nativeLayout = {
 
 export const nativeEffects = {
   glass: {
-    defaultIntensity: 0.25,
-    shadowColor: "#000000",
-    liquidBlurIntensity: 4,
-    frostedBlurIntensity: 44,
-    liquidGradientStart: "rgba(255,255,255,0.1)",
-    frostedGradientStart: "rgba(255,255,255,0.42)",
-    liquidGradientEnd: "rgba(255,255,255,0.005)",
-    frostedGradientEnd: "rgba(255,255,255,0.105)",
-    darkFallbackGradientStart: "rgba(255,255,255,0.10)",
-    darkFallbackGradientEnd: "rgba(255,255,255,0.02)",
-    nativeFrostedThreshold: 0.5,
-    nativeTintMaxOpacity: 0.18,
+    defaultLevel: "clear" as const,
+    levels: {
+      clear: {
+        light: {
+          blurIntensity: 14,
+          gradientStart: "rgba(255,255,255,0.18)",
+          gradientEnd: "rgba(255,255,255,0.03)",
+        },
+        dark: {
+          blurIntensity: 14,
+          gradientStart: "rgba(255,255,255,0.10)",
+          gradientEnd: "rgba(255,255,255,0.02)",
+        },
+      },
+      medium: {
+        light: {
+          blurIntensity: 40,
+          gradientStart: "rgba(255,255,255,0.38)",
+          gradientEnd: "rgba(255,255,255,0.12)",
+        },
+        dark: {
+          blurIntensity: 40,
+          gradientStart: "rgba(255,255,255,0.20)",
+          gradientEnd: "rgba(255,255,255,0.07)",
+        },
+      },
+      matte: {
+        light: {
+          blurIntensity: 80,
+          gradientStart: "rgba(255,255,255,0.66)",
+          gradientEnd: "rgba(255,255,255,0.46)",
+        },
+        dark: {
+          blurIntensity: 80,
+          gradientStart: "rgba(255,255,255,0.34)",
+          gradientEnd: "rgba(255,255,255,0.20)",
+        },
+      },
+    },
+    shadows: {
+      light: {
+        color: "#000000",
+        opacity: 0.14,
+        radius: 16,
+        offsetY: 6,
+        elevation: 6,
+      },
+      dark: {
+        color: "#000000",
+        opacity: 0.45,
+        radius: 18,
+        offsetY: 8,
+        elevation: 8,
+      },
+    },
     transitionDurationSeconds: 0.24,
-    highlightStart: "rgba(255,255,255,0.9)",
-    highlightEnd: "rgba(255,255,255,0)",
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-    shadowOffsetY: 6,
   },
   ambient: {
     diameter: 320,

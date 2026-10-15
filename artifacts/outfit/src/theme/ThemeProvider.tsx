@@ -10,30 +10,20 @@ import {
   type ReactNode,
 } from "react";
 import { Appearance, Platform, useColorScheme } from "react-native";
-import {
-  nativeEffects,
-  nativeLayout,
-  nativeTheme,
-} from "@workspace/outfit-design-system/lib/native-theme";
+import { nativeTheme } from "@workspace/outfit-design-system/lib/native-theme";
 import { setColorSchemeOverride } from "@workspace/outfit-design-system/hooks/use-colors";
-import { setGlassEffectLevel as setDesignSystemGlassEffectLevel } from "@workspace/outfit-design-system/hooks/use-glass-effect";
-import {
-  loadGlassEffectLevel,
-  loadThemeMode,
-  persistGlassEffectLevel,
-  persistThemeMode,
-  type ThemeMode,
-} from "../theme-mode";
+import { loadThemeMode, persistThemeMode, type ThemeMode } from "../theme-mode";
 import { logContrastAudit } from "./contrast";
 
-export const lightColors = nativeTheme.light;
-export const darkColors = nativeTheme.dark;
-export type ThemeColors = typeof lightColors | typeof darkColors;
+const lightColors = nativeTheme.light;
+const darkColors = nativeTheme.dark;
+export type ThemeColors = typeof nativeTheme.light | typeof nativeTheme.dark;
 
 type ColorScheme = "light" | "dark";
 type ThemeContextValue = {
   colors: ThemeColors;
   scheme: ColorScheme;
+  systemScheme: ColorScheme | null;
   isDark: boolean;
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => Promise<void>;
@@ -61,9 +51,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemSchemeRef = useRef<ColorScheme | null>(normalizedSystemScheme);
   systemSchemeRef.current = normalizedSystemScheme;
   const [mode, setModeState] = useState<ThemeMode>("system");
+  const modeRef = useRef<ThemeMode>("system");
   const [ready, setReady] = useState(false);
   const scheme = resolveScheme(mode, normalizedSystemScheme);
   const colors = scheme === "dark" ? darkColors : lightColors;
+  modeRef.current = mode;
 
   useEffect(() => {
     let active = true;
@@ -82,19 +74,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setNativeAppearance(initialMode);
         if (active) {
           setModeState(initialMode);
+          modeRef.current = initialMode;
           setReady(true);
         }
-      });
-
-    void loadGlassEffectLevel(
-      AsyncStorage,
-      nativeEffects.glass.defaultIntensity,
-    )
-      .then((initialGlassLevel) => {
-        setDesignSystemGlassEffectLevel(initialGlassLevel);
-      })
-      .catch((error: unknown) => {
-        console.error("Unable to load the saved glass effect.", error);
       });
 
     if (__DEV__ && !contrastAuditHasRun) {
@@ -125,9 +107,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [mode, normalizedSystemScheme, scheme]);
 
-  const setMode = useCallback(
-    async (nextMode: ThemeMode) => {
-      const previousMode = mode;
+  const setMode = useCallback(async (nextMode: ThemeMode) => {
+      const previousMode = modeRef.current;
+      modeRef.current = nextMode;
       setModeState(nextMode);
       setNativeAppearance(nextMode);
       setColorSchemeOverride(
@@ -136,20 +118,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       try {
         await persistThemeMode(AsyncStorage, nextMode);
       } catch (error) {
-        setModeState(previousMode);
-        setNativeAppearance(previousMode);
-        setColorSchemeOverride(
-          resolveScheme(previousMode, systemSchemeRef.current),
-        );
+        if (modeRef.current === nextMode) {
+          modeRef.current = previousMode;
+          setModeState(previousMode);
+          setNativeAppearance(previousMode);
+          setColorSchemeOverride(
+            resolveScheme(previousMode, systemSchemeRef.current),
+          );
+        }
         throw error;
       }
-    },
-    [mode],
-  );
+    }, []);
 
   const value = useMemo(
-    () => ({ colors, scheme, isDark: scheme === "dark", mode, setMode }),
-    [colors, mode, scheme, setMode],
+    () => ({
+      colors,
+      scheme,
+      systemScheme: normalizedSystemScheme,
+      isDark: scheme === "dark",
+      mode,
+      setMode,
+    }),
+    [mode, normalizedSystemScheme, scheme, setMode],
   );
 
   if (!ready) return null;
@@ -163,13 +153,3 @@ export function useTheme() {
   }
   return theme;
 }
-
-export const BAR_HEIGHT = 64;
-export const BAR_WIDTH = (screenWidth: number) => screenWidth - 40;
-
-export const radius = {
-  control: nativeLayout.pillRadius,
-  panel: 32,
-  field: 20,
-  thumb: 14,
-} as const;

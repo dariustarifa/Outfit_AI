@@ -1,0 +1,42 @@
+PATCH J — GLASS LEVELS, FILLED MENU ICONS, EDGE SHADING. Do only this patch.
+
+PART 1 — REPLACE THE SLIDERS WITH 3 GLASS LEVELS
+- Remove from the settings: glassNative, glassBlur, glassTransparency, both sliders, the "Cristal nativo de iOS" switch and "Restablecer". Uninstall @react-native-community/slider. Ignore any old saved values of those keys.
+- New setting: glassLevel: "clear" | "medium" | "matte". Default "clear". Saved in AsyncStorage and loaded before rendering screens.
+- Profile > "Apariencia": below the theme control, a segmented control with three options: "Cristalino", "Intermedio", "Mate". Selected option = WhiteChip with onChip text; unselected = textMuted. On tap: selection() haptic. Under it, a caption (Satoshi 13, textMuted): "Cristalino deja ver el fondo; Mate es más opaco y difuminado."
+- Keep the preview card (GlassView, height 72, radius 28, text "Vista previa") with the colored strip behind it. It updates when the level changes.
+
+HOW EACH LEVEL RENDERS (inside the shared GlassView, so everything changes: tab bar, plan button, plan panel, chips, sheets)
+- Remount the glass when the level or the scheme changes: key={`${glassLevel}-${scheme}`}.
+- "clear": on iOS 26 use native glass with glassEffectStyle="clear"; otherwise the fallback with preset clear.
+- "medium": on iOS 26 use native glass with glassEffectStyle="regular"; if the installed version does not accept that style, or on any other device, use the fallback with preset medium.
+- "matte": NEVER native glass. Always the fallback with preset matte.
+Fallback presets (BlurView intensity | white overlay alpha from top-left to bottom-right):
+  light mode: clear 14 | 0.18 -> 0.03 ; medium 40 | 0.38 -> 0.12 ; matte 80 | 0.66 -> 0.46
+  dark mode:  clear 14 | 0.10 -> 0.02 ; medium 40 | 0.20 -> 0.07 ; matte 80 | 0.34 -> 0.20
+BlurView tint: "light" in light mode, "dark" in dark mode.
+Text over glass always uses the "text" token.
+
+PART 2 — FILLED MENU ICONS (tab bar only)
+- Use Ionicons from @expo/vector-icons (included in Expo). Replace the three stroke icons of the tab bar by SOLID icons: Home = "home", Profile = "person", Plus = "add-circle". Size 28. If a name does not render, look for the filled variant in the Ionicons glyph map.
+- Colors: active tab icon = gold, inactive = iconInactive, Plus = iconInactive. The oval marker stays as it is.
+- Do not change icons anywhere else.
+
+PART 3 — EDGE SHADING ON THE GLASS
+In the shared GlassView use this structure (on iOS, shadow and overflow hidden cannot be on the same view):
+  <View style={shadowStyle}>                         // outer: borderRadius + shadow, NO overflow hidden
+    <View style={{ borderRadius, overflow: "hidden" }}> ...glass layers... </View>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius, borderWidth: 1, borderColor: colors.edgeShade }]} />   // thin dark outer edge
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: borderRadius - 1, margin: 1, borderWidth: 1, borderColor: colors.glassBorder }]} />   // thin light inner edge
+  </View>
+- New props: edge (default true) and shadow (default false).
+- shadowStyle when shadow is true: light mode color #000, opacity 0.14, radius 16, offsetY 6, elevation 6; dark mode color #000, opacity 0.45, radius 18, offsetY 8, elevation 8.
+- Tab bar: edge true, shadow true. Plan button and plan panel: edge true, shadow false (so the morph animation does not lag). Everything else: edge true, shadow false.
+- If the outer shadow shows as a dark tint INSIDE the translucent glass, remove the shadow and keep only the two thin edges. Tell me if you had to.
+- The effect must be subtle: it only helps to tell the glass apart from the background.
+
+DONE WHEN
+ - Switching Cristalino / Intermedio / Mate changes the look of the tab bar and the plan button visibly and instantly, in light and dark mode.
+ - The tab bar icons are solid, not outlines.
+ - The tab bar edge is clearly defined against the background without looking heavy.
+Reply with: files changed, and whether the shadow had to be removed.

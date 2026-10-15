@@ -10,9 +10,8 @@ shopping catalog.
 - The linked Figma file provides a single mobile home-screen composition; it has
   no reusable published component catalog or variable definitions available.
 - The exact base colors and interaction rules below come from the Outfit project
-  brief. The light theme preserves those values. The dark theme in `tokens.json`
-  keeps the original warm-charcoal, toast-brown, antique-gold, and muted-sage
-  character instead of switching to pure black or cool gray.
+  brief. The light theme preserves those values. The dark theme uses a
+  blue-gray gradient with muted blue ambient colors and antique-gold accents.
 - The uploaded mirror-and-sparkle icon is the supplied brand mark. Keep it as an
   image; do not redraw or alter it.
 
@@ -29,13 +28,16 @@ shopping catalog.
 
 ## Color and background
 
-- Light background: vertical gradient from `#F5F2EB` to `#DDD3C7`.
-- Text: `#2B2B2E` primary and `#6B665F` secondary.
-- Accent: `#9A7B4F`. Ambient blobs: sand `#E6D2B8`, gold `#D8BC8C`, and sage
-  `#C9D3C1`.
+- Light background: vertical gradient from `#F4F1EA` to `#D3CCC5`.
+- Dark background: vertical gradient from `#222831` to `#11151B`, with ambient
+  blue-gray colors `#33445A` and `#3D4F6B`.
+- Light text: `#2E2D30` primary and `#5B5753` secondary; light accent:
+  `#B19B63`. Light ambient blobs use sand `#E5D8C8` and gold `#D6C39C`.
+- Dark text: `#EDF0F5` primary and `#A9B1BD` secondary; dark accent:
+  `#D4BC86`.
 - In the native app, place three soft radial color blobs in the lower half:
   approximately 320 pt, 80% center opacity fading to transparent at the edge.
-  Use sand at the lower left, gold at the lower right, and sage at mid-right.
+  Reuse the two theme ambient colors at lower left, lower right, and mid-right.
 - Keep backgrounds warm and atmospheric. Do not replace the gradient and color
   blobs with a flat white surface.
 
@@ -44,18 +46,15 @@ shopping catalog.
 Keep glass adjustable from a clear, liquid treatment to a softly frosted one.
 The default remains clear and low-opacity so the warm background stays visible:
 
-1. On iOS 26+ when `isLiquidGlassAvailable()` is true, use `expo-glass-effect`.
-   The clear end uses `clear`; the frosted end may use `regular`. Pass the
-   selected light/dark scheme and animate native style changes.
-2. Elsewhere, interpolate `expo-blur` intensity and the white gradient between
-   the shared liquid and frosted values. The default intensity maps to the
-   former 14-point blur.
-3. Overlay the interpolated white gradient, then a 1 px token-driven border and
-   a 1 px top-edge highlight fading from 90% opacity to transparent.
-4. Use a black shadow at 6% opacity, radius 20, and vertical offset 6.
-5. Clip fallback content to the supplied border radius. Keep colored blobs
-   visible through the low-blur setting; even at the frosted end, do not create
-   an opaque white or matte card.
+1. On iOS 26+ when `isLiquidGlassAvailable()` is true, use native `clear` for
+   the clear preset and `regular` for medium. Matte always uses the fallback.
+2. Elsewhere, choose a named `expo-blur` preset: clear (14), medium (40), or
+   matte (80), with light/dark white-gradient alpha values from
+   `nativeEffects.glass.levels`.
+3. Clip glass content to the supplied border radius. Keep the scheme-aware
+   outer dark edge and inner light edge on separate overlays.
+4. Keep shadows outside the clipped glass. Reserve the subtle scheme-aware
+   shadow for elevated controls such as the tab bar.
 
 Keep the warm background visible behind glass, especially in dark mode. Never
 animate the opacity of native glass. Hide it by moving it with `translateY`.
@@ -66,7 +65,7 @@ animate the opacity of native glass. Hide it by moving it with `translateY`.
   a height of 64 pt. The plan pill sits 12 pt above the bar.
 - The active tab highlight is a 92 × 48 pt plain oval with a 999 pt radius and
   slides between Home and Profile; the add button does not receive the highlight.
-- Primary buttons are charcoal `#2B2B2E` pills with `#F5F2EB` text, height 56.
+- Primary buttons use the theme's primary/on-primary pair and are 56 pt high.
   Disabled buttons use 40% opacity.
 - Use 24 px card corners and 999 px pill corners.
 - Use 24 px horizontal screen padding and the 4 px base spacing step.

@@ -3,11 +3,12 @@ import test from "node:test";
 
 import {
   colorSchemeForMode,
-  GLASS_EFFECT_LEVEL_KEY,
-  loadGlassEffectLevel,
+  DEFAULT_GLASS_LEVEL,
+  GLASS_LEVEL_KEY,
+  isGlassLevel,
+  loadGlassLevel,
   loadThemeMode,
-  normalizeStoredGlassEffectLevel,
-  persistGlassEffectLevel,
+  persistGlassLevel,
   persistThemeMode,
   THEME_MODE_KEY,
 } from "./theme-mode.ts";
@@ -48,28 +49,28 @@ test("system mode resets Appearance while explicit modes override it", () => {
   assert.equal(colorSchemeForMode("dark"), "dark");
 });
 
-test("glass effect preference loads a default and rejects invalid saved values", async () => {
-  assert.equal(await loadGlassEffectLevel(createMemoryStorage(), 0.25), 0.25);
+test("glass level defaults to clear and ignores invalid or legacy values", async () => {
+  assert.equal(await loadGlassLevel(createMemoryStorage()), DEFAULT_GLASS_LEVEL);
   assert.equal(
-    await loadGlassEffectLevel(
-      createMemoryStorage({ [GLASS_EFFECT_LEVEL_KEY]: "1.5" }),
-      0.25,
+    await loadGlassLevel(
+      createMemoryStorage({ [GLASS_LEVEL_KEY]: "frosted" }),
     ),
-    0.25,
+    "clear",
   );
   assert.equal(
-    await loadGlassEffectLevel(
-      createMemoryStorage({ [GLASS_EFFECT_LEVEL_KEY]: "0.73" }),
-      0.25,
+    await loadGlassLevel(
+      createMemoryStorage({ glassEffectLevel: "0.73" }),
     ),
-    0.73,
+    "clear",
   );
+  assert.equal(isGlassLevel("medium"), true);
+  assert.equal(isGlassLevel("matte"), true);
+  assert.equal(isGlassLevel("liquid"), false);
 });
 
-test("glass effect preference persists within the liquid-to-frosted range", async () => {
+test("glass level preference persists and reloads", async () => {
   const storage = createMemoryStorage();
-  await persistGlassEffectLevel(storage, 1.27, 0.25);
-  assert.equal(storage.values.get(GLASS_EFFECT_LEVEL_KEY), "1");
-  assert.equal(normalizeStoredGlassEffectLevel(-0.3, 0.25), 0);
-  assert.equal(normalizeStoredGlassEffectLevel(Number.NaN, 0.25), 0.25);
+  await persistGlassLevel(storage, "matte");
+  assert.equal(storage.values.get(GLASS_LEVEL_KEY), "matte");
+  assert.equal(await loadGlassLevel(storage), "matte");
 });

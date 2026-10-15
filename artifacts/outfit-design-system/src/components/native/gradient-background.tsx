@@ -14,14 +14,17 @@ import { nativeEffects } from "../../lib/native-theme";
 
 export type GradientBackgroundProps = {
   children: ReactNode;
+  colors?: ReturnType<typeof useColors>;
   style?: StyleProp<ViewStyle>;
 };
 
 export function GradientBackground({
   children,
+  colors: providedColors,
   style,
 }: GradientBackgroundProps) {
-  const colors = useColors();
+  const sharedColors = useColors();
+  const colors = providedColors ?? sharedColors;
   const instanceId = useId().replace(/:/g, "");
   const { width, height } = useWindowDimensions();
   const blobRadius = nativeEffects.ambient.diameter / 2;
