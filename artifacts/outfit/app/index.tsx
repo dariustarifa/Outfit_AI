@@ -32,6 +32,7 @@ import { useTheme } from "@/src/theme";
 import { selection } from "@/src/haptics";
 import { getStartupScreen } from "@/src/onboarding-progress";
 import type { WardrobeItem } from "@/src/types";
+import { getProfileDisplay } from "@/src/profile-display";
 
 function formatClock(date: Date): string {
   return new Intl.DateTimeFormat("es-ES", {
@@ -60,6 +61,7 @@ export function HomeScreen() {
   }));
   const insets = useSafeAreaInsets();
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
+  const profileDisplay = getProfileDisplay(profile);
   const startupScreen = getStartupScreen(loading, profile);
   const { planComposerOpen } = useHomeControlsState();
   const lastWeatherRefreshAt = useRef(0);
@@ -143,12 +145,10 @@ export function HomeScreen() {
     setWeather,
   ]);
 
-  const displayName =
-    profile?.preferredName?.trim() || profile?.name.trim() || "Tú";
   const timeAndWeather = getHomeWeatherText(
     formatClock(clockDate),
     weather,
-    profile?.city ?? "",
+    profileDisplay.city,
   );
 
   const openWardrobe = () => {
@@ -233,7 +233,7 @@ export function HomeScreen() {
                   minimumFontScale={0.7}
                   style={[styles.greeting, { color: colors.textPrimary }]}
                 >
-                  Hola, {displayName}
+                  Hola, {profileDisplay.greetingName}
                 </Animated.Text>
                 <Animated.View style={styles.weatherRow}>
                   <CloudSun size={17} color={colors.textSecondary} strokeWidth={1.7} />

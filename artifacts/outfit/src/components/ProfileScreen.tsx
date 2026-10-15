@@ -32,6 +32,7 @@ import { useTheme, type ThemeMode, type ThemeColors } from "../theme";
 import { useSettings } from "../context/SettingsContext";
 import type { GlassLevel } from "../theme-mode";
 import { useApp } from "@/src/context/AppContext";
+import { getProfileDisplay } from "@/src/profile-display";
 import type { Gender, Profile, ProfileUpdate, WardrobeItem } from "@/src/types";
 import { formatCity, searchCities, type CityResult } from "@/src/services/geocoding";
 import { selection, success } from "@/src/haptics";
@@ -58,6 +59,7 @@ const glassLevelOptions: { value: GlassLevel; label: string }[] = [
 
 type EditableField =
   | "name"
+  | "preferredName"
   | "gender"
   | "age"
   | "heightCm"
@@ -123,6 +125,8 @@ function fieldTitle(field: EditableField): string {
   switch (field) {
     case "name":
       return "Nombre";
+    case "preferredName":
+      return "Nombre preferido";
     case "gender":
       return "Género";
     case "age":
@@ -418,6 +422,7 @@ export function ProfileScreen() {
     wardrobe,
     updateProfile,
   } = useApp();
+  const profileDisplay = getProfileDisplay(profile);
   const [form, setForm] = useState<ProfileForm>(() =>
     profile ? formFromProfile(profile) : emptyForm(),
   );
@@ -582,6 +587,10 @@ export function ProfileScreen() {
         // The home greeting prefers preferredName, so keep it in sync with a changed name.
         updates.preferredName = suggestedName(name);
       }
+    } else if (field === "preferredName") {
+      updates = {
+        preferredName: form.preferredName.trim() || suggestedName(profile.name),
+      };
     } else if (field === "age") {
       const age = Number(form.age);
       if (!Number.isInteger(age) || age < 14 || age > 99) {
@@ -651,7 +660,13 @@ export function ProfileScreen() {
     {
       field: "name",
       label: "Nombre",
-      value: profile.name,
+      value: profileDisplay.name,
+      icon: <UserRound size={18} color={colors.textSecondary} />,
+    },
+    {
+      field: "preferredName",
+      label: "Nombre preferido",
+      value: profileDisplay.preferredName,
       icon: <UserRound size={18} color={colors.textSecondary} />,
     },
     {
@@ -663,19 +678,19 @@ export function ProfileScreen() {
     {
       field: "age",
       label: "Edad",
-      value: `${profile.age} años`,
+      value: profileDisplay.age,
       icon: <CalendarDays size={18} color={colors.textSecondary} />,
     },
     {
       field: "heightCm",
       label: "Estatura (cm)",
-      value: `${profile.heightCm} cm`,
+      value: profileDisplay.height,
       icon: <Ruler size={18} color={colors.textSecondary} />,
     },
     {
       field: "city",
       label: "Ciudad",
-      value: profile.city,
+      value: profileDisplay.city,
       icon: <MapPin size={18} color={colors.textSecondary} />,
     },
     {
@@ -1020,6 +1035,23 @@ export function ProfileScreen() {
                           testID="edit-profile-name"
                           autoCapitalize="words"
                           onChangeText={(value) => updateForm("name", value)}
+                          colors={colors}
+                        />
+                      ) : null}
+                      {activeField === "preferredName" ? (
+                        <ProfileInput
+                          label="NOMBRE PREFERIDO"
+                          value={form.preferredName}
+                          placeholder={
+                            suggestedName(form.name) ||
+                            "Cómo quieres que te llamemos"
+                          }
+                          accessibilityLabel="Nombre preferido"
+                          testID="edit-profile-preferred-name"
+                          autoCapitalize="words"
+                          onChangeText={(value) =>
+                            updateForm("preferredName", value)
+                          }
                           colors={colors}
                         />
                       ) : null}
