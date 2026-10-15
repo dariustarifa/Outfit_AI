@@ -45,6 +45,10 @@ import {
 } from "../services/geocoding";
 import {
   getInitialOnboardingStep,
+  ONBOARDING_DRAFT_SAVE_ERROR,
+  ONBOARDING_PROFILE_SAVE_ERROR,
+  OnboardingSaveError,
+  saveOnboardingStep,
   type OnboardingStep,
 } from "../onboarding-progress";
 import { selectProfilePhoto } from "../profile-photo";
@@ -304,23 +308,26 @@ export default function ProgressiveOnboardingScreen() {
 
     setSaving(true);
     setMessage("");
+    setDraftSaveError("");
     try {
-      const saved = await setProfile(nextProfile);
       const nextForm = {
         ...form,
         preferredName: effectivePreferredName,
-        bodyPhotoUri: saved?.bodyPhotoUri ?? form.bodyPhotoUri,
       };
+      const { savedProfile, nextStep } = await saveOnboardingStep({
+        step,
+        profile: nextProfile,
+        draft: {
+          ...nextForm,
+          step,
+          selectedCity,
+        },
+        saveProfile: setProfile,
+        saveDraft: saveOnboardingDraft,
+        clearDraft: clearOnboardingDraft,
+      });
 
-      if (step === 6) {
-        try {
-          await clearOnboardingDraft();
-        } catch {
-          setDraftSaveError(
-            "No pudimos guardar tu progreso. Mantén la app abierta e inténtalo de nuevo.",
-          );
-          return;
-        }
+      if (nextStep === null) {
         void success();
         router.replace(
           nextProfile.gender
@@ -328,28 +335,20 @@ export default function ProgressiveOnboardingScreen() {
             : "/onboarding/gender",
         );
       } else {
-        const nextStep = Math.min(step + 1, STEP_COUNT - 1) as OnboardingStep;
-        try {
-          await saveOnboardingDraft({
-            ...nextForm,
-            step: nextStep,
-            selectedCity,
-          });
-        } catch {
-          setDraftSaveError(
-            "No pudimos guardar tu progreso. Mantén la app abierta e inténtalo de nuevo.",
-          );
-          return;
-        }
         setStep(nextStep);
-        if (saved) setForm(nextForm);
+        if (savedProfile) {
+          setForm({
+            ...nextForm,
+            bodyPhotoUri: savedProfile.bodyPhotoUri ?? form.bodyPhotoUri,
+          });
+        }
       }
-    } catch {
-      setMessage(
-        step === 6
-          ? "No pudimos guardar la foto en este dispositivo. Vuelve a elegirla e inténtalo otra vez."
-          : "No se pudo guardar este paso. Inténtalo de nuevo.",
-      );
+    } catch (cause) {
+      if (cause instanceof OnboardingSaveError && cause.stage === "draft") {
+        setDraftSaveError(ONBOARDING_DRAFT_SAVE_ERROR);
+      } else {
+        setMessage(ONBOARDING_PROFILE_SAVE_ERROR);
+      }
     } finally {
       setSaving(false);
     }

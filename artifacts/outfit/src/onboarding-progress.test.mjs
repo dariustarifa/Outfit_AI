@@ -3,7 +3,11 @@ import test from "node:test";
 import {
   getInitialOnboardingStep,
   getStartupScreen,
+  ONBOARDING_PROFILE_SAVE_ERROR,
+  OnboardingSaveError,
+  saveOnboardingStep,
 } from "./onboarding-progress.ts";
+import { saveProfileWithPhoto } from "./profile-storage.ts";
 import { createLocalStorage } from "./storage-core.ts";
 
 const readyProfile = {
@@ -148,4 +152,114 @@ test("profile drafts remain in AsyncStorage when the app storage is reloaded", a
   const reloadedProfileWithGender = await createAppStorage().loadAppData();
 
   assert.deepEqual(reloadedProfileWithGender.profile, profileWithGender);
+});
+
+test("a failed profile save keeps onboarding on the same step and can be retried", async () => {
+  const values = new Map();
+  let failNextProfileSave = true;
+  const asyncStorage = {
+    async multiGet(keys) {
+      return keys.map((key) => [key, values.get(key) ?? null]);
+    },
+    async multiSet(entries) {
+      if (failNextProfileSave) {
+        failNextProfileSave = false;
+        throw new Error("Simulated profile storage failure.");
+      }
+      for (const [key, value] of entries) values.set(key, value);
+    },
+    async getItem(key) {
+      return values.get(key) ?? null;
+    },
+    async setItem(key, value) {
+      values.set(key, value);
+    },
+    async removeItem(key) {
+      values.delete(key);
+    },
+  };
+  const storage = createLocalStorage({
+    asyncStorage,
+    fileSystem: {
+      documentDirectory: "file:///app/documents/",
+      async getInfoAsync() {
+        return { exists: false };
+      },
+      async readDirectoryAsync() {
+        return [];
+      },
+      async makeDirectoryAsync() {},
+      async copyAsync() {},
+      async deleteAsync() {},
+    },
+    platform: "ios",
+    persistWebImage: async () => {
+      throw new Error("Web image persistence is not used in this test.");
+    },
+  });
+  let currentData = { profile: null, wardrobe: [] };
+  const persistProfile = (nextProfile) =>
+    saveProfileWithPhoto(nextProfile, currentData, {
+      copyImageToAppDocuments: storage.copyImageToAppDocuments,
+      async commit(nextData) {
+        await storage.saveAppData(nextData);
+        currentData = nextData;
+      },
+      removeStoredImage: storage.removeStoredImage,
+    });
+  const draft = {
+    name: "Ada Lovelace",
+    preferredName: "Ada",
+    age: "36",
+    heightCm: "168",
+    bodyPhotoUri: "",
+    city: "London",
+    photoConsent: true,
+    step: 2,
+    selectedCity: {
+      name: "London",
+      latitude: 51.5072,
+      longitude: -0.1276,
+    },
+  };
+  const profileToSave = {
+    ...readyProfile,
+    bodyPhotoUri: "",
+    onboardingCompleted: true,
+  };
+  let currentStep = 2;
+  const attemptSave = async () => {
+    const result = await saveOnboardingStep({
+      step: currentStep,
+      profile: profileToSave,
+      draft,
+      saveProfile: persistProfile,
+      saveDraft: storage.saveOnboardingDraft,
+      clearDraft: storage.clearOnboardingDraft,
+    });
+    if (result.nextStep !== null) currentStep = result.nextStep;
+    return result;
+  };
+
+  await assert.rejects(
+    attemptSave,
+    (error) =>
+      error instanceof OnboardingSaveError && error.stage === "profile",
+  );
+  assert.equal(currentStep, 2);
+  assert.equal(
+    ONBOARDING_PROFILE_SAVE_ERROR,
+    "No se pudo guardar este paso. Inténtalo de nuevo.",
+  );
+  assert.equal((await storage.loadAppData()).profile, null);
+  assert.equal(await storage.loadOnboardingDraft(), null);
+
+  const retry = await attemptSave();
+
+  assert.equal(retry.nextStep, 3);
+  assert.equal(currentStep, 3);
+  assert.equal(currentData.profile.onboardingCompleted, false);
+  const reloaded = await storage.loadAppData();
+  assert.equal(reloaded.profile.onboardingCompleted, false);
+  assert.equal((await storage.loadOnboardingDraft()).step, 3);
 });
