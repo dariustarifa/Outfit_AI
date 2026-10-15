@@ -53,6 +53,7 @@ import { selectProfilePhoto } from "../profile-photo";
 import type { OnboardingDraft } from "../types";
 
 type SearchState = "idle" | "waiting" | "loading" | "success" | "error";
+type DraftSaveStatus = "idle" | "saving" | "saved";
 
 interface ProfileForm {
   name: string;
@@ -146,6 +147,8 @@ export default function ProgressiveOnboardingScreen() {
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [message, setMessage] = useState("");
   const [draftSaveError, setDraftSaveError] = useState("");
+  const [draftSaveStatus, setDraftSaveStatus] =
+    useState<DraftSaveStatus>("idle");
   const [saving, setSaving] = useState(false);
   const [cameraPermission, requestCameraPermission] =
     ImagePicker.useCameraPermissions();
@@ -196,12 +199,17 @@ export default function ProgressiveOnboardingScreen() {
       step,
       selectedCity,
     };
+    setDraftSaveStatus("saving");
     void saveOnboardingDraft(draft)
       .then(() => {
-        if (draftSaveSequence.current === sequence) setDraftSaveError("");
+        if (draftSaveSequence.current === sequence) {
+          setDraftSaveError("");
+          setDraftSaveStatus("saved");
+        }
       })
       .catch(() => {
         if (draftSaveSequence.current === sequence) {
+          setDraftSaveStatus("idle");
           setDraftSaveError(
             "No pudimos guardar tu progreso. Mantén la app abierta e inténtalo de nuevo.",
           );
@@ -247,6 +255,8 @@ export default function ProgressiveOnboardingScreen() {
   }, [faceWiggle, step]);
 
   const updateForm = (field: keyof ProfileForm, value: string | boolean) => {
+    draftSaveSequence.current += 1;
+    setDraftSaveStatus("saving");
     setForm((current) => ({ ...current, [field]: value }));
     setMessage("");
   };
@@ -333,6 +343,8 @@ export default function ProgressiveOnboardingScreen() {
             : "/onboarding/gender",
         );
       } else {
+        draftSaveSequence.current += 1;
+        setDraftSaveStatus("saving");
         setStep(nextStep);
         if (savedProfile) {
           setForm({
@@ -343,6 +355,7 @@ export default function ProgressiveOnboardingScreen() {
       }
     } catch (cause) {
       if (cause instanceof OnboardingSaveError && cause.stage === "draft") {
+        setDraftSaveStatus("idle");
         setDraftSaveError(ONBOARDING_DRAFT_SAVE_ERROR);
       } else {
         setMessage(ONBOARDING_PROFILE_SAVE_ERROR);
@@ -355,6 +368,8 @@ export default function ProgressiveOnboardingScreen() {
   const goBack = () => {
     if (step === 0 || saving) return;
     setMessage("");
+    draftSaveSequence.current += 1;
+    setDraftSaveStatus("saving");
     setStep((current) => Math.max(current - 1, 0) as OnboardingStep);
   };
 
@@ -902,6 +917,31 @@ export default function ProgressiveOnboardingScreen() {
               {draftSaveError}
             </Text>
           ) : null}
+          {draftSaveStatus !== "idle" ? (
+            <View
+              accessibilityLiveRegion="polite"
+              style={styles.draftSaveStatus}
+            >
+              {draftSaveStatus === "saved" ? (
+                <Check size={14} color={colors.primary} />
+              ) : null}
+              <Text
+                style={[
+                  styles.draftSaveStatusText,
+                  {
+                    color:
+                      draftSaveStatus === "saved"
+                        ? colors.primary
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                {draftSaveStatus === "saving"
+                  ? "Guardando progreso…"
+                  : "Progreso guardado"}
+              </Text>
+            </View>
+          ) : null}
 
             </View>
           </ScrollView>
@@ -1236,6 +1276,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: nativeLayout.baseSpacing * 3,
+  },
+  draftSaveStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: nativeLayout.baseSpacing,
+    marginTop: nativeLayout.baseSpacing * 3,
+  },
+  draftSaveStatusText: {
+    fontFamily: "Satoshi_500Medium",
+    fontSize: 13,
+    lineHeight: 19,
   },
   primaryButton: {
     minHeight: nativeLayout.primaryButtonHeight,
