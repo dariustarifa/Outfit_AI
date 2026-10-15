@@ -11,7 +11,8 @@ shopping catalog.
   no reusable published component catalog or variable definitions available.
 - The exact base colors and interaction rules below come from the Outfit project
   brief. The light theme preserves those values. The dark theme in `tokens.json`
-  is derived from the same palette.
+  keeps the original warm-charcoal, toast-brown, antique-gold, and muted-sage
+  character instead of switching to pure black or cool gray.
 - The uploaded mirror-and-sparkle icon is the supplied brand mark. Keep it as an
   image; do not redraw or alter it.
 

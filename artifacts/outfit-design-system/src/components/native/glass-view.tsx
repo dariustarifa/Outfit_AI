@@ -81,7 +81,7 @@ export function GlassView({
         styles.shadow,
         {
           borderRadius,
-          shadowColor: colors.textPrimary,
+          shadowColor: glass.shadowColor,
           shadowOpacity: glass.shadowOpacity,
           shadowRadius: glass.shadowRadius,
           shadowOffset: { width: 0, height: glass.shadowOffsetY },

@@ -67,6 +67,7 @@ export const nativeLayout = {
 export const nativeEffects = {
   glass: {
     defaultIntensity: 0.25,
+    shadowColor: "#000000",
     liquidBlurIntensity: 4,
     frostedBlurIntensity: 44,
     liquidGradientStart: "rgba(255,255,255,0.1)",
