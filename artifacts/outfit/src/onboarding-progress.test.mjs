@@ -340,3 +340,78 @@ test("a failed progress-draft write keeps the current setup step and can be retr
   assert.equal(savedDraft.step, 3);
   assert.equal(visibleError, "");
 });
+
+test("a failed final draft clear keeps setup open and retries successfully", async () => {
+  let failNextClear = true;
+  let savedProfile = null;
+  let savedDraft = {
+    name: "Ada Lovelace",
+    preferredName: "Ada",
+    age: "36",
+    heightCm: "168",
+    bodyPhotoUri: "file:///profile.jpg",
+    city: "London",
+    photoConsent: true,
+    step: 6,
+  };
+  let currentStep = 6;
+  let currentRoute = "onboarding";
+  let visibleError = "";
+  const draft = savedDraft;
+  const attemptSave = async () => {
+    try {
+      const result = await saveOnboardingStep({
+        step: currentStep,
+        profile: { ...readyProfile, onboardingCompleted: true },
+        draft,
+        async saveProfile(profile) {
+          savedProfile = profile;
+          return profile;
+        },
+        async saveDraft() {
+          throw new Error("The final setup step must not save a next draft.");
+        },
+        async clearDraft() {
+          if (failNextClear) {
+            failNextClear = false;
+            throw new Error("Simulated onboarding draft cleanup failure.");
+          }
+          savedDraft = null;
+        },
+      });
+
+      if (result.nextStep === null) {
+        currentRoute = "onboarding/intro";
+      } else {
+        currentStep = result.nextStep;
+      }
+      visibleError = "";
+      return result;
+    } catch (error) {
+      if (error instanceof OnboardingSaveError && error.stage === "draft") {
+        visibleError = ONBOARDING_DRAFT_SAVE_ERROR;
+      }
+      throw error;
+    }
+  };
+
+  await assert.rejects(
+    attemptSave,
+    (error) =>
+      error instanceof OnboardingSaveError && error.stage === "draft",
+  );
+  assert.equal(currentRoute, "onboarding");
+  assert.equal(currentStep, 6);
+  assert.equal(savedProfile.onboardingCompleted, false);
+  assert.equal(savedDraft, draft);
+  assert.equal(visibleError, ONBOARDING_DRAFT_SAVE_ERROR);
+
+  const retry = await attemptSave();
+
+  assert.equal(retry.nextStep, null);
+  assert.equal(currentRoute, "onboarding/intro");
+  assert.equal(currentStep, 6);
+  assert.equal(savedProfile.onboardingCompleted, false);
+  assert.equal(savedDraft, null);
+  assert.equal(visibleError, "");
+});
