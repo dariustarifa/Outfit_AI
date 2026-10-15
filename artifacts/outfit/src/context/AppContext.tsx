@@ -32,6 +32,7 @@ import type {
 import type { NewWardrobeItem } from "../wardrobe-actions";
 import { updateAndSaveProfile } from "../profile-update";
 import { saveProfileWithPhoto } from "../profile-storage";
+import { isWeatherForProfile } from "../services/home-weather";
 
 export interface AppContextValue extends StoredAppData {
   weather: WeatherSnapshot | null;
@@ -184,7 +185,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       profile,
       wardrobe,
-      weather,
+      weather: isWeatherForProfile(weather, profile) ? weather : null,
       loading,
       error,
       onboardingDraft,

@@ -1,4 +1,5 @@
 import { loadWeatherSnapshot } from "../storage";
+import { getCachedWeatherForLocation } from "./home-weather";
 import type { WeatherSnapshot } from "../types";
 
 interface OpenMeteoResponse {
@@ -34,6 +35,7 @@ function firstNumber(values: number[] | undefined): number | null {
 export async function fetchWeather(
   latitude: number,
   longitude: number,
+  locationKey: string,
 ): Promise<WeatherSnapshot> {
   const params = new URLSearchParams({
     latitude: String(latitude),
@@ -80,10 +82,12 @@ export async function fetchWeather(
       minTemperatureC,
       maxTemperatureC,
       precipitationProbability,
+      locationKey,
     };
   } catch (error) {
     const saved = await loadWeatherSnapshot();
-    if (saved) return saved;
+    const local = getCachedWeatherForLocation(saved, locationKey);
+    if (local) return local;
     throw error;
   }
 }

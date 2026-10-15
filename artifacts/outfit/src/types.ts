@@ -62,6 +62,7 @@ export interface WeatherSnapshot {
   minTemperatureC: number;
   maxTemperatureC: number;
   precipitationProbability: number;
+  locationKey?: string;
 }
 
 export interface StoredAppData {
