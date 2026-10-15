@@ -210,9 +210,7 @@ export default function ProgressiveOnboardingScreen() {
       .catch(() => {
         if (draftSaveSequence.current === sequence) {
           setDraftSaveStatus("idle");
-          setDraftSaveError(
-            "No pudimos guardar tu progreso. Mantén la app abierta e inténtalo de nuevo.",
-          );
+          setDraftSaveError(ONBOARDING_DRAFT_SAVE_ERROR);
         }
       });
   }, [form, restored, saveOnboardingDraft, selectedCity, step]);
