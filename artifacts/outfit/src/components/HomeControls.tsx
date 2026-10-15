@@ -1,27 +1,19 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActionSheetIOS,
-  Alert,
   Dimensions,
-  Image,
   Keyboard,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
-import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
 import {
   ArrowRight,
-  ArrowUp,
-  FileText,
+  Check,
   House,
-  Paperclip,
   X,
 } from "lucide-react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -60,39 +52,19 @@ import { WardrobeAddSheet } from "./WardrobeAddSheet";
 import { WhiteChip } from "./WhiteChip";
 import { useHomeControlsState } from "@/src/context/HomeControlsContext";
 
-export interface PlanAttachment {
-  id: string;
-  uri: string;
-  name: string;
-  mimeType?: string;
-  kind: "image" | "file";
-}
-
 interface HomeControlsProps {
   visible?: boolean;
 }
 
 const spring = { damping: 20, stiffness: 220, mass: 1 };
 
-function makeAttachment(
-  uri: string,
-  name: string,
-  mimeType: string | undefined,
-  kind: PlanAttachment["kind"],
-): PlanAttachment {
-  return {
-    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-    uri,
-    name,
-    mimeType,
-    kind,
-  };
-}
-
 function HomeControlsComponent({ visible = true }: HomeControlsProps) {
   const { colors, isDark } = useTheme();
   const {
     setPlanComposerOpen,
+    dailyPlan,
+    dailyPlanReady,
+    setDailyPlan,
     profileEditorOpen,
   } = useHomeControlsState();
   const insets = useSafeAreaInsets();
@@ -109,7 +81,6 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [text, setText] = useState("");
   const [inputHeight, setInputHeight] = useState(56);
-  const [attachments, setAttachments] = useState<PlanAttachment[]>([]);
   const [toast, setToast] = useState("");
   const inputRef = useRef<TextInput>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -135,14 +106,12 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
 
   useEffect(() => {
     const targetHeight =
-      160 +
-      (attachments.length > 0 ? 64 : 0) +
-      Math.max(0, inputHeight - 56);
+      160 + Math.max(0, inputHeight - 56);
     expandedHeight.value = withTiming(targetHeight, {
       duration: 150,
       easing: Easing.out(Easing.cubic),
     });
-  }, [attachments.length, expandedHeight, inputHeight]);
+  }, [expandedHeight, inputHeight]);
 
   useEffect(() => {
     activeTabProgress.value = withSpring(
@@ -194,8 +163,11 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
   }, [finishComposerClose, progress]);
 
   const openComposer = () => {
+    if (!dailyPlanReady) return;
     void tapLight();
     closeStarted.current = false;
+    setText(dailyPlan ?? "");
+    setInputHeight(56);
     setExpanded(true);
     setPlanComposerOpen(true);
   };
@@ -218,113 +190,27 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
     return () => listener.remove();
   }, [closeComposer, expanded, text]);
 
-  const appendImage = (asset: ImagePicker.ImagePickerAsset) => {
-    setAttachments((previous) => [
-      ...previous,
-      makeAttachment(
-        asset.uri,
-        asset.fileName ?? "Foto",
-        asset.mimeType ?? undefined,
-        "image",
-      ),
-    ]);
-  };
-
-  const takePhoto = async () => {
+  const savePlan = async () => {
+    const nextPlan = text.trim();
+    if (!nextPlan) return;
     try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        showToast("Activa el acceso a la cámara para hacer una foto.");
-        return;
-      }
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
-        quality: 0.85,
-      });
-      if (!result.canceled) result.assets.forEach(appendImage);
+      await setDailyPlan(nextPlan);
+      void success();
+      closeComposer();
+      showToast("Plan guardado");
     } catch {
-      showToast("No se pudo abrir la cámara.");
+      showToast("No se pudo guardar el plan.");
     }
   };
 
-  const chooseFromGallery = async () => {
+  const clearPlan = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsMultipleSelection: true,
-        quality: 0.85,
-      });
-      if (!result.canceled) result.assets.forEach(appendImage);
+      await setDailyPlan(null);
+      void tapLight();
+      showToast("Plan eliminado");
     } catch {
-      showToast("No se pudo abrir la galería.");
+      showToast("No se pudo eliminar el plan.");
     }
-  };
-
-  const chooseFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        copyToCacheDirectory: true,
-        multiple: true,
-      });
-      if (!result.canceled) {
-        setAttachments((previous) => [
-          ...previous,
-          ...result.assets.map((asset) =>
-            makeAttachment(asset.uri, asset.name, asset.mimeType, "file"),
-          ),
-        ]);
-      }
-    } catch {
-      showToast("No se pudo abrir el selector de archivos.");
-    }
-  };
-
-  const openAttachmentOptions = () => {
-    void tapLight();
-    const options = [
-      "Hacer foto",
-      "Elegir de la galería",
-      "Elegir archivo",
-      "Cancelar",
-    ];
-    const handlers = [takePhoto, chooseFromGallery, chooseFile];
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 3 },
-        (index) => {
-          if (index >= 0 && index < handlers.length) {
-            void handlers[index]?.();
-          }
-        },
-      );
-      return;
-    }
-    Alert.alert("Adjuntar", undefined, [
-      { text: options[0], onPress: () => void takePhoto() },
-      { text: options[1], onPress: () => void chooseFromGallery() },
-      { text: options[2], onPress: () => void chooseFile() },
-      { text: options[3], style: "cancel" },
-    ]);
-  };
-
-  const onSubmitPlan = (payload: {
-    text: string;
-    attachments: PlanAttachment[];
-  }) => {
-    console.log("Plan enviado", payload);
-  };
-
-  const sendPlan = () => {
-    if (!text.trim() && attachments.length === 0) return;
-    const payload = { text: text.trim(), attachments };
-    void success();
-    setText("");
-    setInputHeight(56);
-    setAttachments([]);
-    closeComposer();
-    onSubmitPlan(payload);
-    showToast("Enviado");
   };
 
   const morphStyle = useAnimatedStyle(() => {
@@ -398,7 +284,7 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
     ],
   }));
 
-  const canSend = Boolean(text.trim()) || attachments.length > 0;
+  const canSave = Boolean(text.trim());
 
   return (
     <View
@@ -416,7 +302,7 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Cerrar el campo de petición"
+          accessibilityLabel="Cerrar el plan de hoy"
           onPress={closeComposer}
           style={StyleSheet.absoluteFill}
         />
@@ -470,52 +356,6 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
               style={[StyleSheet.absoluteFill, composerContentStyle]}
             >
               <View style={styles.composerContent}>
-                {attachments.length > 0 ? (
-                  <ScrollView
-                    horizontal
-                    contentInsetAdjustmentBehavior="never"
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.attachmentList}
-                    contentContainerStyle={styles.attachmentRow}
-                  >
-                    {attachments.map((attachment) => (
-                      <View key={attachment.id} style={styles.attachment}>
-                        {attachment.kind === "image" ? (
-                          <Image
-                            source={{ uri: attachment.uri }}
-                            style={styles.attachmentImage}
-                            accessibilityLabel={attachment.name}
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.fileAttachment,
-                              { backgroundColor: colors.secondary },
-                            ]}
-                          >
-                            <FileText size={22} color={colors.textSecondary} />
-                          </View>
-                        )}
-                        <Pressable
-                          accessibilityLabel={`Quitar ${attachment.name}`}
-                          onPress={() =>
-                            setAttachments((previous) =>
-                              previous.filter((item) => item.id !== attachment.id),
-                            )
-                          }
-                          hitSlop={8}
-                          style={[
-                            styles.removeAttachment,
-                            { backgroundColor: colors.textPrimary },
-                          ]}
-                        >
-                          <X size={12} color={colors.onPrimary} strokeWidth={2} />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </ScrollView>
-                ) : null}
-
                 <TextInput
                   ref={inputRef}
                   value={text}
@@ -529,14 +369,14 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
                       Math.abs(current - nextHeight) < 1 ? current : nextHeight,
                     );
                   }}
-                  placeholder="Escribe tu petición…"
+                  placeholder="Ej. trabajo, paseo o cena"
                   placeholderTextColor={colors.placeholder}
                   selectionColor={colors.gold}
                   keyboardAppearance={isDark ? "dark" : "light"}
                   multiline
                   scrollEnabled
                   textAlignVertical="top"
-                  maxLength={3000}
+                  maxLength={120}
                   style={[
                     styles.input,
                     {
@@ -550,30 +390,16 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
                 <View style={styles.composerActions}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Adjuntar archivo o foto"
-                    onPress={openAttachmentOptions}
-                    style={styles.attachButtonPressable}
-                  >
-                    <WhiteChip style={styles.attachButton}>
-                      <Paperclip
-                        size={22}
-                        color={colors.onChip}
-                        strokeWidth={1.7}
-                      />
-                    </WhiteChip>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Enviar petición"
-                    accessibilityState={{ disabled: !canSend }}
-                    disabled={!canSend}
-                    onPress={sendPlan}
+                    accessibilityLabel="Guardar plan de hoy"
+                    accessibilityState={{ disabled: !canSave }}
+                    disabled={!canSave}
+                    onPress={() => void savePlan()}
                     style={[
                       styles.sendButton,
-                      { backgroundColor: colors.gold, opacity: canSend ? 1 : 0.4 },
+                      { backgroundColor: colors.gold, opacity: canSave ? 1 : 0.4 },
                     ]}
                   >
-                    <ArrowUp size={22} color={colors.onGold} strokeWidth={2} />
+                    <Check size={22} color={colors.onGold} strokeWidth={2} />
                   </Pressable>
                 </View>
               </View>
@@ -584,6 +410,10 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
             >
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={
+                  dailyPlan ? `Editar el plan de hoy: ${dailyPlan}` : "Añadir plan para hoy"
+                }
+                disabled={!dailyPlanReady}
                 onPress={openComposer}
                 onPressIn={() => {
                   pressScale.value = withSpring(0.97, spring);
@@ -593,11 +423,26 @@ function HomeControlsComponent({ visible = true }: HomeControlsProps) {
                 }}
                 style={styles.planPressable}
               >
-                <Text style={[styles.planText, { color: colors.textPrimary }]}>
-                  ¿Cuál es el plan de hoy?
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={[styles.planText, { color: colors.textPrimary }]}
+                >
+                  {dailyPlan ? `Hoy: ${dailyPlan}` : "¿Cuál es el plan de hoy?"}
                 </Text>
                 <ArrowRight size={20} color={colors.gold} strokeWidth={1.8} />
               </Pressable>
+              {dailyPlan ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Borrar el plan de hoy"
+                  onPress={() => void clearPlan()}
+                  hitSlop={8}
+                  style={styles.clearPlanButton}
+                >
+                  <X size={18} color={colors.textSecondary} strokeWidth={1.8} />
+                </Pressable>
+              ) : null}
             </Animated.View>
           </Animated.View>
         ) : null}
@@ -722,16 +567,24 @@ const styles = StyleSheet.create({
   },
   planButton: {
     flex: 1,
+    flexDirection: "row",
     justifyContent: "center",
   },
   planPressable: {
     flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
   },
+  clearPlanButton: {
+    width: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   planText: {
+    flexShrink: 1,
     fontFamily: "Satoshi_500Medium",
     fontSize: 18,
   },
@@ -740,44 +593,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 14,
-  },
-  attachmentList: {
-    flexGrow: 0,
-    marginBottom: 8,
-  },
-  attachmentRow: {
-    flexDirection: "row",
-    gap: 10,
-    paddingRight: 8,
-  },
-  attachment: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.thumb,
-    overflow: "visible",
-  },
-  attachmentImage: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.thumb,
-  },
-  fileAttachment: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.thumb,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  removeAttachment: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    width: 19,
-    height: 19,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.86,
   },
   input: {
     width: "100%",
@@ -802,19 +617,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginTop: 10,
-  },
-  attachButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  attachButtonPressable: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: "hidden",
   },
   sendButton: {
     width: 44,

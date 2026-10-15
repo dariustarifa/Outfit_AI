@@ -54,13 +54,20 @@ export function HomeScreen() {
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
   const profileDisplay = getProfileDisplay(profile);
   const startupScreen = getStartupScreen(loading, profile);
-  const { planComposerOpen } = useHomeControlsState();
+  const { planComposerOpen, dailyPlan, dailyPlanReady } =
+    useHomeControlsState();
   const lastWeatherRefreshAt = useRef(0);
   const lastWeatherLocation = useRef("");
   const [clockDate, setClockDate] = useState(() => new Date());
   const dailyItems = useMemo(
-    () => recommendDailyOutfit(wardrobe, clockDate, weather),
-    [clockDate, wardrobe, weather],
+    () =>
+      recommendDailyOutfit(
+        wardrobe,
+        clockDate,
+        weather,
+        dailyPlanReady ? dailyPlan : null,
+      ),
+    [clockDate, dailyPlan, dailyPlanReady, wardrobe, weather],
   );
 
   useEffect(() => {

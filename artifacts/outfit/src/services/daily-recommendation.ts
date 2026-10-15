@@ -157,7 +157,13 @@ export function recommendDailyOutfit(
   wardrobe: WardrobeItem[],
   date: Date,
   weather: WeatherSnapshot | null,
+  dailyPlan?: string | null,
 ): DailyRecommendation {
+  const plan = dailyPlan?.trim().replace(/\s+/g, " ");
+  const explainPlan = (explanation: string) =>
+    plan
+      ? `Para «${plan}», he tenido en cuenta tu plan de hoy y he elegido únicamente prendas guardadas en tu armario. ${explanation}`
+      : explanation;
   const dayNumber = localDayNumber(date);
   const groups: GarmentGroups = {
     upper: [],
@@ -191,7 +197,9 @@ export function recommendDailyOutfit(
       return {
         mode: "starting",
         items: [],
-        explanation: "Tu armario está vacío; añade una prenda para recibir una idea diaria.",
+        explanation: explainPlan(
+          "Tu armario está vacío; añade una prenda para recibir una idea diaria.",
+        ),
       };
     }
     const kind = classifiedKinds.get(startingItem.id) ?? null;
@@ -234,9 +242,10 @@ export function recommendDailyOutfit(
     return {
       mode: "starting",
       items: selectedItems,
-      explanation:
+      explanation: explainPlan(
         "Aún no hay suficientes tipos de prenda identificados para proponer un conjunto; esta pieza es solo un punto de partida." +
-        weatherContext,
+          weatherContext,
+      ),
     };
   }
 
@@ -300,6 +309,6 @@ export function recommendDailyOutfit(
   return {
     mode: "outfit",
     items: selected,
-    explanation,
+    explanation: explainPlan(explanation),
   };
 }
