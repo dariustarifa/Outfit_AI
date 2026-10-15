@@ -13,6 +13,7 @@ import {
   loadAppData,
   loadWeatherSnapshot,
   removeStoredImage,
+  removeUnreferencedStoredImage,
   saveAppData,
   saveWeatherSnapshot,
 } from "../storage";
@@ -150,6 +151,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         commit,
         copyImageToAppDocuments,
         removeStoredImage,
+        removeUnreferencedStoredImage,
         onError: setError,
       }),
     [commit],

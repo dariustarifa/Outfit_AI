@@ -9,9 +9,7 @@ interface AsyncKeyValueStorage {
   multiGet(
     keys: readonly string[],
   ): Promise<readonly (readonly [string, string | null])[]>;
-  multiSet(
-    entries: readonly (readonly [string, string])[],
-  ): Promise<void>;
+  multiSet(entries: readonly (readonly [string, string])[]): Promise<void>;
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
@@ -19,7 +17,10 @@ interface AsyncKeyValueStorage {
 
 interface ManagedFileSystem {
   documentDirectory: string | null;
-  getInfoAsync(uri: string): Promise<{ exists: boolean }>;
+  getInfoAsync(
+    uri: string,
+  ): Promise<{ exists: boolean; isDirectory?: boolean }>;
+  readDirectoryAsync(uri: string): Promise<string[]>;
   makeDirectoryAsync(
     uri: string,
     options?: { intermediates?: boolean },
@@ -117,7 +118,7 @@ export function createLocalStorage({
   platform,
   persistWebImage,
 }: LocalStorageDependencies) {
-  async function loadAppData(): Promise<StoredAppData> {
+  async function readAppData(): Promise<StoredAppData> {
     const values = await asyncStorage.multiGet([PROFILE_KEY, WARDROBE_KEY]);
     const stored = new Map(values);
     const parsedProfile = parseJson(stored.get(PROFILE_KEY) ?? null, "profile");
@@ -127,20 +128,55 @@ export function createLocalStorage({
     );
 
     if (parsedProfile !== null && !isProfile(parsedProfile)) {
-      throw new Error("Saved profile data does not match the current app format.");
+      throw new Error(
+        "Saved profile data does not match the current app format.",
+      );
     }
     const wardrobeValue = parsedWardrobe ?? [];
-    if (
-      !Array.isArray(wardrobeValue) ||
-      !wardrobeValue.every(isWardrobeItem)
-    ) {
-      throw new Error("Saved wardrobe data does not match the current app format.");
+    if (!Array.isArray(wardrobeValue) || !wardrobeValue.every(isWardrobeItem)) {
+      throw new Error(
+        "Saved wardrobe data does not match the current app format.",
+      );
     }
 
     return {
       profile: parsedProfile,
       wardrobe: wardrobeValue as WardrobeItem[],
     };
+  }
+
+  async function reconcileManagedPhotos(data: StoredAppData): Promise<void> {
+    if (platform === "web" || !fileSystem.documentDirectory) return;
+
+    const photoDirectory = `${fileSystem.documentDirectory}${PHOTO_DIRECTORY_NAME}`;
+    const directoryInfo = await fileSystem.getInfoAsync(photoDirectory);
+    if (!directoryInfo.exists) return;
+
+    const referencedImages = new Set(
+      [
+        data.profile?.bodyPhotoUri,
+        ...data.wardrobe.map((item) => item.imageUri),
+      ].filter(
+        (uri): uri is string => typeof uri === "string" && uri.length > 0,
+      ),
+    );
+    const storedPhotos = await fileSystem.readDirectoryAsync(photoDirectory);
+
+    for (const filename of storedPhotos) {
+      const photoUri = `${photoDirectory}${filename}`;
+      if (referencedImages.has(photoUri)) continue;
+
+      const photoInfo = await fileSystem.getInfoAsync(photoUri);
+      if (photoInfo.exists && !photoInfo.isDirectory) {
+        await fileSystem.deleteAsync(photoUri);
+      }
+    }
+  }
+
+  async function loadAppData(): Promise<StoredAppData> {
+    const data = await readAppData();
+    await reconcileManagedPhotos(data);
+    return data;
   }
 
   async function saveAppData(data: StoredAppData): Promise<void> {
@@ -157,7 +193,9 @@ export function createLocalStorage({
     );
     if (parsed === null) return null;
     if (!isWeatherSnapshot(parsed)) {
-      throw new Error("Saved weather data does not match the current app format.");
+      throw new Error(
+        "Saved weather data does not match the current app format.",
+      );
     }
     return parsed;
   }
@@ -172,9 +210,7 @@ export function createLocalStorage({
     await asyncStorage.setItem(WEATHER_KEY, JSON.stringify(weather));
   }
 
-  async function copyImageToAppDocuments(
-    sourceUri: string,
-  ): Promise<string> {
+  async function copyImageToAppDocuments(sourceUri: string): Promise<string> {
     if (!sourceUri.trim()) {
       throw new Error("An image URI is required.");
     }
@@ -212,20 +248,37 @@ export function createLocalStorage({
     await fileSystem.copyAsync({ from: sourceUri, to: storedUri });
     const copiedFile = await fileSystem.getInfoAsync(storedUri);
     if (!copiedFile.exists) {
-      throw new Error("The selected photo could not be copied into app storage.");
+      throw new Error(
+        "The selected photo could not be copied into app storage.",
+      );
     }
     return storedUri;
   }
 
   async function removeStoredImage(imageUri: string): Promise<void> {
     const documentDirectory = fileSystem.documentDirectory;
-    if (!documentDirectory || !imageUri.startsWith(`${documentDirectory}outfit/`)) {
+    if (
+      !documentDirectory ||
+      !imageUri.startsWith(`${documentDirectory}outfit/`)
+    ) {
       return;
     }
 
     const file = await fileSystem.getInfoAsync(imageUri);
     if (file.exists) {
       await fileSystem.deleteAsync(imageUri);
+    }
+  }
+
+  async function removeUnreferencedStoredImage(
+    imageUri: string,
+  ): Promise<void> {
+    const data = await readAppData();
+    const isReferenced =
+      data.profile?.bodyPhotoUri === imageUri ||
+      data.wardrobe.some((item) => item.imageUri === imageUri);
+    if (!isReferenced) {
+      await removeStoredImage(imageUri);
     }
   }
 
@@ -236,5 +289,6 @@ export function createLocalStorage({
     saveWeatherSnapshot,
     copyImageToAppDocuments,
     removeStoredImage,
+    removeUnreferencedStoredImage,
   };
 }

@@ -10,6 +10,7 @@ interface WardrobeActionDependencies {
   commit(next: StoredAppData): Promise<void>;
   copyImageToAppDocuments(sourceUri: string): Promise<string>;
   removeStoredImage(imageUri: string): Promise<void>;
+  removeUnreferencedStoredImage(imageUri: string): Promise<void>;
   onError(error: Error): void;
 }
 
@@ -18,22 +19,24 @@ export function createWardrobeActions({
   commit,
   copyImageToAppDocuments,
   removeStoredImage,
+  removeUnreferencedStoredImage,
   onError,
 }: WardrobeActionDependencies) {
   const reportError = (cause: unknown, fallback: string): Error => {
-    const error =
-      cause instanceof Error ? cause : new Error(fallback);
+    const error = cause instanceof Error ? cause : new Error(fallback);
     onError(error);
     return error;
   };
 
   const addItem = async (item: NewWardrobeItem): Promise<WardrobeItem> => {
+    let copiedImageUri: string | undefined;
     try {
+      copiedImageUri = await copyImageToAppDocuments(item.imageUri);
       const savedItem: WardrobeItem = {
         id: `${Date.now().toString(36)}-${Math.random()
           .toString(36)
           .slice(2, 10)}`,
-        imageUri: await copyImageToAppDocuments(item.imageUri),
+        imageUri: copiedImageUri,
         note: item.note,
         createdAt: Date.now(),
       };
@@ -42,6 +45,13 @@ export function createWardrobeActions({
       await commit({ ...currentData, wardrobe: nextWardrobe });
       return savedItem;
     } catch (cause) {
+      if (copiedImageUri) {
+        try {
+          await removeUnreferencedStoredImage(copiedImageUri);
+        } catch {
+          // A later load reconciles any managed photo left by a failed cleanup.
+        }
+      }
       throw reportError(cause, "Could not save wardrobe item.");
     }
   };
@@ -50,6 +60,7 @@ export function createWardrobeActions({
     itemId: string,
     updates: Partial<Pick<WardrobeItem, "imageUri" | "note">>,
   ): Promise<void> => {
+    let copiedImageUri: string | undefined;
     try {
       const currentData = getData();
       const previousItem = currentData.wardrobe.find(
@@ -59,7 +70,7 @@ export function createWardrobeActions({
 
       const nextImageUri =
         updates.imageUri && updates.imageUri !== previousItem.imageUri
-          ? await copyImageToAppDocuments(updates.imageUri)
+          ? (copiedImageUri = await copyImageToAppDocuments(updates.imageUri))
           : previousItem.imageUri;
       const updatedItem: WardrobeItem = {
         ...previousItem,
@@ -74,6 +85,13 @@ export function createWardrobeActions({
         await removeStoredImage(previousItem.imageUri);
       }
     } catch (cause) {
+      if (copiedImageUri) {
+        try {
+          await removeUnreferencedStoredImage(copiedImageUri);
+        } catch {
+          // A later load reconciles any managed photo left by a failed cleanup.
+        }
+      }
       throw reportError(cause, "Could not update wardrobe item.");
     }
   };

@@ -42,6 +42,13 @@ function createEnvironment(platform) {
     async getInfoAsync(uri) {
       return { exists: files.has(uri) || directories.has(uri) };
     },
+    async readDirectoryAsync(uri) {
+      const prefix = uri.endsWith("/") ? uri : `${uri}/`;
+      return [...files.keys()]
+        .filter((path) => path.startsWith(prefix))
+        .map((path) => path.slice(prefix.length))
+        .filter((filename) => filename.length > 0 && !filename.includes("/"));
+    },
     async makeDirectoryAsync(uri) {
       directories.add(uri);
     },
@@ -96,18 +103,25 @@ for (const platform of ["ios", "android"]) {
       env.addSource(sourceUri, `${platform}-${source}-image-bytes`);
 
       const saved = await env.save({ ...profile, bodyPhotoUri: sourceUri });
-      assert.ok(saved.bodyPhotoUri.startsWith(
-        "file:///app/documents/outfit/wardrobe/",
-      ));
+      assert.ok(
+        saved.bodyPhotoUri.startsWith("file:///app/documents/outfit/wardrobe/"),
+      );
       assert.notEqual(saved.bodyPhotoUri, sourceUri);
-      assert.equal(env.files.get(saved.bodyPhotoUri), `${platform}-${source}-image-bytes`);
+      assert.equal(
+        env.files.get(saved.bodyPhotoUri),
+        `${platform}-${source}-image-bytes`,
+      );
       assert.equal(saved.onboardingCompleted, false);
 
       const reloaded = await env.reload();
       assert.equal(reloaded.profile.bodyPhotoUri, saved.bodyPhotoUri);
-      assert.equal(env.files.get(reloaded.profile.bodyPhotoUri), `${platform}-${source}-image-bytes`);
       assert.equal(
-        (await env.fileSystem.getInfoAsync(reloaded.profile.bodyPhotoUri)).exists,
+        env.files.get(reloaded.profile.bodyPhotoUri),
+        `${platform}-${source}-image-bytes`,
+      );
+      assert.equal(
+        (await env.fileSystem.getInfoAsync(reloaded.profile.bodyPhotoUri))
+          .exists,
         true,
       );
     });
@@ -123,4 +137,21 @@ test("a failed native photo copy prevents profile persistence", async () => {
   );
   const reloaded = await env.reload();
   assert.equal(reloaded.profile, null);
+});
+
+test("loading saved data preserves the profile photo while removing stale managed photos", async () => {
+  const env = createEnvironment("ios");
+  env.addSource("file:///picker/profile-kept.jpg", "profile-image");
+  const saved = await env.save({
+    ...profile,
+    bodyPhotoUri: "file:///picker/profile-kept.jpg",
+  });
+  const stalePhotoUri = "file:///app/documents/outfit/wardrobe/stale.jpg";
+  env.files.set(stalePhotoUri, "orphaned-image");
+
+  const reloaded = await env.reload();
+
+  assert.equal(reloaded.profile.bodyPhotoUri, saved.bodyPhotoUri);
+  assert.equal(env.files.get(saved.bodyPhotoUri), "profile-image");
+  assert.equal(env.files.has(stalePhotoUri), false);
 });

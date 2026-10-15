@@ -9,11 +9,17 @@ function createTestEnvironment() {
   const files = new Map();
   const directories = new Set();
   const errors = [];
+  let failNextMetadataWrite = false;
+  let failNextDelete = false;
   const asyncStorage = {
     async multiGet(keys) {
       return keys.map((key) => [key, values.get(key) ?? null]);
     },
     async multiSet(entries) {
+      if (failNextMetadataWrite) {
+        failNextMetadataWrite = false;
+        throw new Error("Metadata persistence failed.");
+      }
       for (const [key, value] of entries) values.set(key, value);
     },
     async getItem(key) {
@@ -31,6 +37,13 @@ function createTestEnvironment() {
     async getInfoAsync(uri) {
       return { exists: directories.has(uri) || files.has(uri) };
     },
+    async readDirectoryAsync(uri) {
+      const prefix = uri.endsWith("/") ? uri : `${uri}/`;
+      return [...files.keys()]
+        .filter((path) => path.startsWith(prefix))
+        .map((path) => path.slice(prefix.length))
+        .filter((filename) => filename.length > 0 && !filename.includes("/"));
+    },
     async makeDirectoryAsync(uri) {
       directories.add(uri);
     },
@@ -39,6 +52,10 @@ function createTestEnvironment() {
       files.set(to, files.get(from));
     },
     async deleteAsync(uri) {
+      if (failNextDelete) {
+        failNextDelete = false;
+        throw new Error("Photo cleanup failed.");
+      }
       files.delete(uri);
     },
   };
@@ -60,6 +77,7 @@ function createTestEnvironment() {
     },
     copyImageToAppDocuments: storage.copyImageToAppDocuments,
     removeStoredImage: storage.removeStoredImage,
+    removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
     onError(error) {
       errors.push(error);
     },
@@ -78,6 +96,12 @@ function createTestEnvironment() {
     setSourcePhoto(uri, contents) {
       files.set(uri, contents);
     },
+    failNextMetadataWrite() {
+      failNextMetadataWrite = true;
+    },
+    failNextDelete() {
+      failNextDelete = true;
+    },
   };
 }
 
@@ -91,14 +115,23 @@ test("a captured photo is copied into app documents and remains readable after r
     note: "Linen shirt",
   });
 
-  assert.match(savedItem.imageUri, /^file:\/\/\/app\/documents\/outfit\/wardrobe\//);
+  assert.match(
+    savedItem.imageUri,
+    /^file:\/\/\/app\/documents\/outfit\/wardrobe\//,
+  );
   assert.notEqual(savedItem.imageUri, cameraUri);
   assert.equal(env.files.get(savedItem.imageUri), "captured-image-bytes");
 
   const reloaded = await env.reload();
   assert.deepEqual(reloaded.wardrobe, [savedItem]);
-  assert.equal(env.files.get(reloaded.wardrobe[0].imageUri), "captured-image-bytes");
-  assert.equal((await env.fileSystem.getInfoAsync(reloaded.wardrobe[0].imageUri)).exists, true);
+  assert.equal(
+    env.files.get(reloaded.wardrobe[0].imageUri),
+    "captured-image-bytes",
+  );
+  assert.equal(
+    (await env.fileSystem.getInfoAsync(reloaded.wardrobe[0].imageUri)).exists,
+    true,
+  );
 });
 
 test("all 60 gallery photos remain saved and readable after reload", async () => {
@@ -109,9 +142,8 @@ test("all 60 gallery photos remain saved and readable after reload", async () =>
     return { uri };
   });
 
-  const result = await saveGallerySelection(
-    assets,
-    (item) => env.actions.addItem(item),
+  const result = await saveGallerySelection(assets, (item) =>
+    env.actions.addItem(item),
   );
   assert.deepEqual(result, { added: 60, failed: 0 });
 
@@ -121,7 +153,10 @@ test("all 60 gallery photos remain saved and readable after reload", async () =>
     const item = reloaded.wardrobe[index];
     assert.equal(item.note, "");
     assert.equal(env.files.get(item.imageUri), `image-bytes-${index + 1}`);
-    assert.equal((await env.fileSystem.getInfoAsync(item.imageUri)).exists, true);
+    assert.equal(
+      (await env.fileSystem.getInfoAsync(item.imageUri)).exists,
+      true,
+    );
   }
 });
 
@@ -145,8 +180,80 @@ test("replacing a photo persists the new URI and removes the previous managed fi
   assert.notEqual(reloaded.wardrobe[0].imageUri, oldUri);
   assert.equal(reloaded.wardrobe[0].note, "Updated jacket");
   assert.equal(env.files.has(oldUri), false);
-  assert.equal(env.files.get(reloaded.wardrobe[0].imageUri), "replacement-image");
+  assert.equal(
+    env.files.get(reloaded.wardrobe[0].imageUri),
+    "replacement-image",
+  );
   assert.deepEqual(env.errors, []);
+});
+
+test("a failed wardrobe save removes the copied photo", async () => {
+  const env = createTestEnvironment();
+  const sourceUri = "file:///picker/save-failure.jpg";
+  env.setSourcePhoto(sourceUri, "save-failure-image");
+  env.failNextMetadataWrite();
+
+  await assert.rejects(
+    env.actions.addItem({ imageUri: sourceUri, note: "Green coat" }),
+    /Metadata persistence failed/,
+  );
+
+  const managedPhotos = [...env.files.keys()].filter((uri) =>
+    uri.startsWith("file:///app/documents/outfit/wardrobe/"),
+  );
+  assert.deepEqual(managedPhotos, []);
+  assert.deepEqual((await env.reload()).wardrobe, []);
+});
+
+test("a failed replacement commit removes the new photo but keeps the old one", async () => {
+  const env = createTestEnvironment();
+  env.setSourcePhoto("file:///picker/original.jpg", "original-image");
+  env.setSourcePhoto("file:///picker/replacement.jpg", "replacement-image");
+  const item = await env.actions.addItem({
+    imageUri: "file:///picker/original.jpg",
+    note: "Coat",
+  });
+  env.failNextMetadataWrite();
+
+  await assert.rejects(
+    env.actions.updateItem(item.id, {
+      imageUri: "file:///picker/replacement.jpg",
+    }),
+    /Metadata persistence failed/,
+  );
+
+  assert.equal(env.files.has(item.imageUri), true);
+  const reloaded = await env.reload();
+  assert.equal(reloaded.wardrobe[0].imageUri, item.imageUri);
+  assert.equal(
+    [...env.files.keys()].filter((uri) =>
+      uri.startsWith("file:///app/documents/outfit/wardrobe/"),
+    ).length,
+    1,
+  );
+});
+
+test("an interrupted old-photo cleanup is reconciled on the next load", async () => {
+  const env = createTestEnvironment();
+  env.setSourcePhoto("file:///picker/original.jpg", "original-image");
+  env.setSourcePhoto("file:///picker/replacement.jpg", "replacement-image");
+  const item = await env.actions.addItem({
+    imageUri: "file:///picker/original.jpg",
+    note: "Coat",
+  });
+  env.failNextDelete();
+
+  await assert.rejects(
+    env.actions.updateItem(item.id, {
+      imageUri: "file:///picker/replacement.jpg",
+    }),
+    /Photo cleanup failed/,
+  );
+
+  const updated = await env.reload();
+  assert.notEqual(updated.wardrobe[0].imageUri, item.imageUri);
+  assert.equal(env.files.has(updated.wardrobe[0].imageUri), true);
+  assert.equal(env.files.has(item.imageUri), false);
 });
 
 test("editing only an item's note preserves its saved photo", async () => {

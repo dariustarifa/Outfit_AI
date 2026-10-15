@@ -82,6 +82,9 @@ test("profile drafts remain in AsyncStorage when the app storage is reloaded", a
         async getInfoAsync() {
           return { exists: false };
         },
+        async readDirectoryAsync() {
+          return [];
+        },
         async makeDirectoryAsync() {},
         async copyAsync() {},
         async deleteAsync() {},
