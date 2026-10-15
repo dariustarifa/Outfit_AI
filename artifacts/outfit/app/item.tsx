@@ -14,13 +14,12 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { ArrowLeft, Camera, ImagePlus, Save, Trash2, X } from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import {
   nativeEffects,
   nativeLayout,
@@ -31,6 +30,7 @@ import { selection, success } from "@/src/haptics";
 
 export default function WardrobeItemScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { wardrobe, loading, addItem, updateItem, removeItem } = useApp();
   const existingItem = id ? wardrobe.find((item) => item.id === id) : undefined;
@@ -152,21 +152,31 @@ export default function WardrobeItemScreen() {
 
   if (id && (loading || !formReady)) {
     return (
-      <GradientBackground style={styles.fill}>
-        <SafeAreaView style={styles.loadingState}>
+      <View style={styles.fill}>
+        <View
+          style={[
+            styles.loadingState,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
           <ActivityIndicator color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Preparando la prenda…
           </Text>
-        </SafeAreaView>
-      </GradientBackground>
+        </View>
+      </View>
     );
   }
 
   if (id && !existingItem) {
     return (
-      <GradientBackground style={styles.fill}>
-        <SafeAreaView style={styles.loadingState}>
+      <View style={styles.fill}>
+        <View
+          style={[
+            styles.loadingState,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
           <Text style={[styles.errorTitle, { color: colors.textPrimary }]}>
             No encontramos esta prenda
           </Text>
@@ -175,22 +185,29 @@ export default function WardrobeItemScreen() {
               Volver al armario
             </Text>
           </Pressable>
-        </SafeAreaView>
-      </GradientBackground>
+        </View>
+      </View>
     );
   }
 
   const isEditing = Boolean(id);
 
   return (
-    <GradientBackground style={styles.fill}>
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.fill}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+    <View style={styles.fill}>
+      <KeyboardAvoidingView
+        style={styles.fill}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
           <ScrollView
-            contentContainerStyle={styles.content}
+            style={styles.fill}
+            contentInsetAdjustmentBehavior="never"
+            contentContainerStyle={[
+              styles.content,
+              {
+                paddingTop: insets.top + 16,
+                paddingBottom: insets.bottom + 120,
+              },
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -372,8 +389,7 @@ export default function WardrobeItemScreen() {
               </Pressable>
             ) : null}
           </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+      </KeyboardAvoidingView>
 
       <CameraCaptureModal
         visible={cameraOpen}
@@ -384,7 +400,7 @@ export default function WardrobeItemScreen() {
           void selection();
         }}
       />
-    </GradientBackground>
+    </View>
   );
 }
 
@@ -398,6 +414,7 @@ function CameraCaptureModal({
   onCapture: (uri: string) => void;
 }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [takingPhoto, setTakingPhoto] = useState(false);
@@ -429,7 +446,15 @@ function CameraCaptureModal({
       onRequestClose={onClose}
     >
       <View style={[styles.cameraScreen, { backgroundColor: colors.background }]}>
-        <SafeAreaView style={styles.cameraSafeArea}>
+        <View
+          style={[
+            styles.cameraSafeArea,
+            {
+              paddingTop: insets.top,
+              paddingBottom: insets.bottom + 16,
+            },
+          ]}
+        >
           <View style={styles.cameraTopBar}>
             <Pressable
               accessibilityRole="button"
@@ -517,7 +542,7 @@ function CameraCaptureModal({
               </View>
             </>
           )}
-        </SafeAreaView>
+        </View>
       </View>
     </Modal>
   );
@@ -525,11 +550,8 @@ function CameraCaptureModal({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  safeArea: { flex: 1 },
   content: {
     paddingHorizontal: nativeLayout.screenHorizontalPadding,
-    paddingTop: 8,
-    paddingBottom: 36,
   },
   topBar: {
     minHeight: 42,

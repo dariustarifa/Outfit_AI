@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   Alert,
+  Dimensions,
   Image,
   Keyboard,
   Platform,
@@ -15,7 +16,6 @@ import {
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
 import {
   ArrowRight,
   ArrowUp,
@@ -33,9 +33,11 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout, useColors } from "../theme";
 import { success, tapLight } from "../haptics";
+import { WardrobeAddSheet } from "./WardrobeAddSheet";
 
 export interface PlanAttachment {
   id: string;
@@ -71,16 +73,31 @@ function makeAttachment(
 
 export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [expanded, setExpanded] = useState(false);
+  const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<PlanAttachment[]>([]);
   const [toast, setToast] = useState("");
   const inputRef = useRef<TextInput>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastOffset = useSharedValue(Dimensions.get("screen").height);
   const progress = useSharedValue(0);
   const activeTabProgress = useSharedValue(screen === "profile" ? 1 : 0);
   const pressScale = useSharedValue(1);
+  const toastAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: toastOffset.value }],
+  }));
+
+  useEffect(() => {
+    if (!toast) {
+      toastOffset.value = Dimensions.get("screen").height;
+      return;
+    }
+    toastOffset.value = Dimensions.get("screen").height;
+    toastOffset.value = withSpring(0, spring);
+  }, [toast, toastOffset]);
 
   useEffect(() => {
     progress.value = withSpring(expanded ? 1 : 0, spring);
@@ -277,8 +294,16 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
 
       {toast ? (
         <Animated.View
-          entering={FadeIn.duration(180)}
-          style={styles.toast}
+          style={[
+            styles.toast,
+            toastAnimatedStyle,
+            {
+              top:
+                Platform.OS === "web"
+                  ? Math.max(insets.top, 67) + 12
+                  : insets.top + 12,
+            },
+          ]}
           pointerEvents="none"
         >
           <GlassView borderRadius={nativeLayout.pillRadius} style={styles.toastGlass}>
@@ -289,7 +314,18 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
         </Animated.View>
       ) : null}
 
-      <View style={styles.footer} pointerEvents="box-none">
+      <View
+        style={[
+          styles.footer,
+          {
+            paddingBottom:
+              Platform.OS === "web"
+                ? Math.max(insets.bottom, 34) + 20
+                : insets.bottom + 20,
+          },
+        ]}
+        pointerEvents="box-none"
+      >
         {screen === "home" ? (
           <Animated.View
             entering={FadeIn.duration(250).delay(240)}
@@ -311,6 +347,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                   {attachments.length > 0 ? (
                     <ScrollView
                       horizontal
+                      contentInsetAdjustmentBehavior="never"
                       showsHorizontalScrollIndicator={false}
                       style={styles.attachmentList}
                       contentContainerStyle={styles.attachmentRow}
@@ -470,10 +507,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                   testID="add-wardrobe-item-tab"
                   onPress={() => {
                     void tapLight();
-                    router.push({
-                      pathname: "/onboarding/wardrobe",
-                      params: { from: "plus" },
-                    } as never);
+                    setAddSheetVisible(true);
                   }}
                   style={styles.tabButton}
                 >
@@ -500,6 +534,11 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
           </Animated.View>
         </Animated.View>
       </View>
+      <WardrobeAddSheet
+        visible={addSheetVisible}
+        onDismiss={() => setAddSheetVisible(false)}
+        onToast={showToast}
+      />
     </View>
   );
 }
@@ -515,7 +554,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: "center",
-    paddingBottom: 20,
     zIndex: 2,
   },
   morphShell: {

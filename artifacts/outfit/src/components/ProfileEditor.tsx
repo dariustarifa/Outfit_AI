@@ -236,26 +236,32 @@ export function ProfileEditor() {
 
   const topPadding =
     Platform.OS === "web"
-      ? Math.max(insets.top, 67) + nativeLayout.baseSpacing * 5
-      : nativeLayout.baseSpacing * 5;
+      ? Math.max(insets.top, 67) + 16
+      : insets.top + 16;
 
   if (!profile) return null;
 
   return (
-    <ScrollView
-      testID="profile-edit-form"
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingTop: topPadding,
-          paddingHorizontal: nativeLayout.screenHorizontalPadding,
-          paddingBottom: nativeLayout.primaryButtonHeight * 3 + insets.bottom,
-        },
-      ]}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.fill}>
+      <ScrollView
+        style={styles.fill}
+        testID="profile-edit-form"
+        contentInsetAdjustmentBehavior="never"
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: topPadding,
+            paddingHorizontal: nativeLayout.screenHorizontalPadding,
+            paddingBottom:
+              Platform.OS === "web"
+                ? Math.max(insets.bottom, 34) + 120
+                : insets.bottom + 120,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
         TU PERFIL
       </Text>
@@ -466,7 +472,8 @@ export function ProfileEditor() {
           {saving ? "Guardando…" : "Guardar cambios"}
         </Text>
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -564,6 +571,7 @@ function PhotoButton({
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: {
     flexGrow: 1,
   },

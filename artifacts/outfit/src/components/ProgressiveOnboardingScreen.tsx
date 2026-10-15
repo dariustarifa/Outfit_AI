@@ -32,7 +32,6 @@ import {
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 import { useApp } from "../context/AppContext";
@@ -371,23 +370,19 @@ export default function ProgressiveOnboardingScreen() {
 
   const contentTop =
     Platform.OS === "web"
-      ? Math.max(insets.top, 24) + nativeLayout.baseSpacing * 4
-      : insets.top + nativeLayout.baseSpacing * 4;
+      ? Math.max(insets.top, 24) + 16
+      : insets.top + 16;
   const contentBottom =
     Platform.OS === "web"
-      ? Math.max(insets.bottom, 16) + nativeLayout.baseSpacing * 4
-      : insets.bottom + nativeLayout.baseSpacing * 4;
+      ? Math.max(insets.bottom, 16) + 16
+      : insets.bottom + 16;
 
   if (loading || !initialized.current) {
-    return (
-      <GradientBackground style={styles.fill}>
-        <View style={styles.fill} />
-      </GradientBackground>
-    );
+    return <View style={styles.fill} />;
   }
 
   return (
-    <GradientBackground style={styles.fill}>
+    <View style={styles.fill}>
       <KeyboardAvoidingView
         style={styles.fill}
         behavior={Platform.OS === "web" ? undefined : "padding"}
@@ -396,11 +391,12 @@ export default function ProgressiveOnboardingScreen() {
         <View style={styles.screen}>
           <ScrollView
             style={styles.fill}
+            contentInsetAdjustmentBehavior="never"
             contentContainerStyle={[
               styles.scrollContent,
               {
                 paddingTop: contentTop,
-                paddingBottom: nativeLayout.baseSpacing * 4,
+                paddingBottom: insets.bottom + 120,
                 paddingHorizontal: nativeLayout.screenHorizontalPadding,
               },
             ]}
@@ -874,7 +870,7 @@ export default function ProgressiveOnboardingScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </GradientBackground>
+    </View>
   );
 }
 

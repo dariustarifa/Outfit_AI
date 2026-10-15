@@ -13,12 +13,11 @@ import {
 import { router } from "expo-router";
 import { ArrowRight, CloudSun, Plus, Shirt } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
 import { HomeControls } from "@/src/components/HomeControls";
-import { ProfileEditor } from "@/src/components/ProfileEditor";
+import { ProfileScreen } from "@/src/components/ProfileScreen";
 import OnboardingScreen from "@/src/components/ProgressiveOnboardingScreen";
 import { useApp } from "@/src/context/AppContext";
 import { fetchWeather } from "@/src/services/weather";
@@ -136,9 +135,13 @@ export default function HomeScreen() {
 
   if (startupScreen === "loading") {
     return (
-      <GradientBackground style={styles.fill}>
-        <SafeAreaView style={styles.fill}>
-          <View style={styles.loadingContent}>
+      <View style={styles.fill}>
+        <View
+          style={[
+            styles.loadingContent,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
             <View style={[styles.skeletonLine, styles.skeletonDate, { backgroundColor: colors.muted }]} />
             <View style={[styles.skeletonLine, styles.skeletonTitle, { backgroundColor: colors.muted }]} />
             <GlassView style={styles.skeletonCard}>
@@ -148,9 +151,8 @@ export default function HomeScreen() {
                 <View style={[styles.skeletonLine, styles.skeletonLabel, { backgroundColor: colors.muted }]} />
               </View>
             </GlassView>
-          </View>
-        </SafeAreaView>
-      </GradientBackground>
+        </View>
+      </View>
     );
   }
 
@@ -159,23 +161,28 @@ export default function HomeScreen() {
   }
 
   return (
-    <GradientBackground style={styles.fill}>
-      <SafeAreaView style={styles.fill} edges={["top", "bottom"]}>
-        <KeyboardAvoidingView
-          style={styles.fill}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={0}
-        >
-          <View style={styles.screen}>
+    <View style={styles.fill}>
+      <KeyboardAvoidingView
+        style={styles.fill}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
+      >
+        <View style={styles.screen}>
             {screen === "home" ? (
               <ScrollView
+                style={styles.fill}
+                contentInsetAdjustmentBehavior="never"
                 contentContainerStyle={[
                   styles.homeContent,
                   {
                     paddingTop:
                       Platform.OS === "web"
-                        ? Math.max(insets.top, 67) + nativeLayout.baseSpacing * 6
-                        : nativeLayout.baseSpacing * 6,
+                        ? Math.max(insets.top, 67) + 16
+                        : insets.top + 16,
+                    paddingBottom:
+                      Platform.OS === "web"
+                        ? Math.max(insets.bottom, 34) + 120
+                        : insets.bottom + 120,
                   },
                 ]}
                 showsVerticalScrollIndicator={false}
@@ -347,13 +354,12 @@ export default function HomeScreen() {
                 </Animated.View>
               </ScrollView>
             ) : (
-              <ProfileEditor />
+              <ProfileScreen />
             )}
-            <HomeControls screen={screen} onScreenChange={setScreen} />
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </GradientBackground>
+          <HomeControls screen={screen} onScreenChange={setScreen} />
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -364,9 +370,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   homeContent: {
-    paddingTop: nativeLayout.baseSpacing * 6,
     paddingHorizontal: nativeLayout.screenHorizontalPadding,
-    paddingBottom: nativeLayout.primaryButtonHeight * 4,
   },
   date: {
     fontFamily: "Satoshi_700Bold",

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -12,13 +13,14 @@ import {
   Text,
   TextInput,
   View,
-  useWindowDimensions,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -29,7 +31,6 @@ import {
   Settings,
 } from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import {
   nativeEffects,
   nativeLayout,
@@ -44,6 +45,7 @@ import {
 
 const WEB_SAFE_TOP = 67;
 const WEB_SAFE_BOTTOM = 34;
+const screenHeight = Dimensions.get("screen").height;
 
 export default function WardrobeOnboardingScreen() {
   const colors = useColors();
@@ -51,7 +53,6 @@ export default function WardrobeOnboardingScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromPlus = from === "plus";
   const { profile, wardrobe, loading, addItem, setProfile } = useApp();
-  const { height: windowHeight } = useWindowDimensions();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
@@ -65,6 +66,10 @@ export default function WardrobeOnboardingScreen() {
   const [galleryProgress, setGalleryProgress] =
     useState<GallerySaveProgress | null>(null);
   const [toast, setToast] = useState("");
+  const toastOffset = useSharedValue(screenHeight);
+  const toastAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: toastOffset.value }],
+  }));
   const [error, setError] = useState("");
   const cameraRef = useRef<CameraView>(null);
   const previewScrollRef = useRef<ScrollView>(null);
@@ -76,6 +81,19 @@ export default function WardrobeOnboardingScreen() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!toast) {
+      toastOffset.value = screenHeight;
+      return;
+    }
+    toastOffset.value = screenHeight;
+    toastOffset.value = withSpring(0, {
+      damping: 20,
+      stiffness: 220,
+      mass: 1,
+    });
+  }, [toast, toastOffset]);
 
   const showToast = useCallback((message: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -290,53 +308,57 @@ export default function WardrobeOnboardingScreen() {
 
   const countLabel =
     wardrobe.length === 1 ? "1 prenda" : `${wardrobe.length} prendas`;
-  const previewHeight = Math.max(220, Math.min(windowHeight * 0.44, 460));
+  const previewHeight = Math.max(220, Math.min(screenHeight * 0.44, 460));
   const cameraGranted = cameraPermission?.granted === true;
   const cameraPermissionBlocked =
     cameraPermission?.status === "denied" && !cameraPermission.canAskAgain;
   const actionsBusy = gallerySaving || confirming;
-  const webSafeAreaPadding =
+  const screenTopInset =
+    Platform.OS === "web" ? Math.max(insets.top, WEB_SAFE_TOP) : insets.top;
+  const screenBottomInset =
     Platform.OS === "web"
-      ? {
-          paddingTop: Math.max(insets.top, WEB_SAFE_TOP),
-          paddingBottom: Math.max(insets.bottom, WEB_SAFE_BOTTOM),
-        }
-      : null;
+      ? Math.max(insets.bottom, WEB_SAFE_BOTTOM)
+      : insets.bottom;
 
   if (loading) {
     return (
-      <GradientBackground style={styles.fill}>
-        <SafeAreaView
-          style={[styles.loadingState, webSafeAreaPadding]}
-          edges={Platform.OS === "web" ? [] : ["top", "bottom"]}
+      <View style={styles.fill}>
+        <View
+          style={[
+            styles.loadingState,
+            {
+              paddingTop: screenTopInset,
+              paddingBottom: screenBottomInset,
+            },
+          ]}
         >
           <ActivityIndicator color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Preparando tu armario…
           </Text>
-        </SafeAreaView>
-      </GradientBackground>
+        </View>
+      </View>
     );
   }
 
   if (photoUri) {
     return (
-      <GradientBackground style={styles.fill}>
-        <SafeAreaView
-          style={[styles.fill, webSafeAreaPadding]}
-          edges={Platform.OS === "web" ? [] : ["top", "bottom"]}
+      <View style={styles.fill}>
+        <KeyboardAvoidingView
+          style={styles.fill}
+          behavior={Platform.OS === "web" ? undefined : "padding"}
+          keyboardVerticalOffset={0}
         >
-          <KeyboardAvoidingView
-            style={styles.fill}
-            behavior={Platform.OS === "web" ? undefined : "padding"}
-            keyboardVerticalOffset={0}
-          >
             <ScrollView
               ref={previewScrollRef}
+              style={styles.fill}
+              contentInsetAdjustmentBehavior="never"
               contentContainerStyle={[
                 styles.previewContent,
                 {
                   paddingHorizontal: nativeLayout.screenHorizontalPadding,
+                  paddingTop: screenTopInset + 16,
+                  paddingBottom: screenBottomInset + 120,
                 },
               ]}
               keyboardShouldPersistTaps="handled"
@@ -480,14 +502,13 @@ export default function WardrobeOnboardingScreen() {
                 </Pressable>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </GradientBackground>
+        </KeyboardAvoidingView>
+      </View>
     );
   }
 
   return (
-    <GradientBackground style={styles.fill}>
+    <View style={styles.fill}>
       <View style={[styles.cameraRoot, { backgroundColor: colors.background }]}>
         {cameraGranted ? (
           <CameraView
@@ -501,13 +522,15 @@ export default function WardrobeOnboardingScreen() {
             }}
           />
         ) : null}
-        <SafeAreaView
+        <View
           style={[
             styles.cameraOverlay,
-            { paddingHorizontal: nativeLayout.screenHorizontalPadding },
-            webSafeAreaPadding,
+            {
+              paddingHorizontal: nativeLayout.screenHorizontalPadding,
+              paddingTop: screenTopInset,
+              paddingBottom: screenBottomInset,
+            },
           ]}
-          edges={Platform.OS === "web" ? [] : ["top", "bottom"]}
         >
           <View style={styles.cameraTopBar}>
             <GlassView
@@ -580,17 +603,22 @@ export default function WardrobeOnboardingScreen() {
                   También puedes añadir varias prendas desde tu galería.
                 </Text>
                 {toast ? (
-                  <GlassView
-                    borderRadius={nativeLayout.pillRadius}
-                    style={[styles.notice, styles.permissionToast]}
-                  >
-                    <Text
-                      accessibilityLiveRegion="polite"
-                      style={[styles.noticeText, { color: colors.textPrimary }]}
+                  <Animated.View style={toastAnimatedStyle}>
+                    <GlassView
+                      borderRadius={nativeLayout.pillRadius}
+                      style={[styles.notice, styles.permissionToast]}
                     >
-                      {toast}
-                    </Text>
-                  </GlassView>
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        style={[
+                          styles.noticeText,
+                          { color: colors.textPrimary },
+                        ]}
+                      >
+                        {toast}
+                      </Text>
+                    </GlassView>
+                  </Animated.View>
                 ) : null}
                 {error ? (
                   <Text
@@ -707,20 +735,22 @@ export default function WardrobeOnboardingScreen() {
                     </GlassView>
                   ) : null}
                   {toast ? (
-                    <GlassView
-                      borderRadius={nativeLayout.pillRadius}
-                      style={styles.notice}
-                    >
-                      <Text
-                        accessibilityLiveRegion="polite"
-                        style={[
-                          styles.noticeText,
-                          { color: colors.textPrimary },
-                        ]}
+                    <Animated.View style={toastAnimatedStyle}>
+                      <GlassView
+                        borderRadius={nativeLayout.pillRadius}
+                        style={styles.notice}
                       >
-                        {toast}
-                      </Text>
-                    </GlassView>
+                        <Text
+                          accessibilityLiveRegion="polite"
+                          style={[
+                            styles.noticeText,
+                            { color: colors.textPrimary },
+                          ]}
+                        >
+                          {toast}
+                        </Text>
+                      </GlassView>
+                    </Animated.View>
                   ) : null}
                   {error ? (
                     <GlassView
@@ -813,9 +843,9 @@ export default function WardrobeOnboardingScreen() {
               </>
             )}
           </View>
-        </SafeAreaView>
+        </View>
       </View>
-    </GradientBackground>
+    </View>
   );
 }
 
@@ -828,7 +858,7 @@ const styles = StyleSheet.create({
     gap: nativeLayout.baseSpacing * 3,
   },
   loadingText: { fontFamily: "Satoshi_400Regular", fontSize: 14 },
-  cameraRoot: { flex: 1, overflow: "hidden" },
+  cameraRoot: { flex: 1 },
   cameraOverlay: { flex: 1 },
   cameraTopBar: {
     minHeight: nativeLayout.primaryButtonHeight,
@@ -956,8 +986,6 @@ const styles = StyleSheet.create({
   },
   previewContent: {
     flexGrow: 1,
-    paddingTop: nativeLayout.baseSpacing * 3,
-    paddingBottom: nativeLayout.baseSpacing * 4,
     gap: nativeLayout.baseSpacing * 3,
   },
   previewHeader: {

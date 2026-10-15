@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
@@ -22,7 +22,6 @@ import {
   X,
 } from "lucide-react-native";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import {
   nativeEffects,
   nativeLayout,
@@ -35,6 +34,7 @@ import { selection, success } from "@/src/haptics";
 
 export default function WardrobeScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { source } = useLocalSearchParams<{ source?: string }>();
   const { wardrobe, loading, error, removeItem } = useApp();
   const [query, setQuery] = useState("");
@@ -168,15 +168,22 @@ export default function WardrobeScreen() {
   );
 
   return (
-    <GradientBackground style={styles.fill}>
-      <SafeAreaView style={styles.safeArea}>
+    <View style={styles.fill}>
         <FlatList
+          style={styles.fill}
           data={loading ? [] : filteredWardrobe}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={styles.gridRow}
-          contentContainerStyle={styles.listContent}
+          contentInsetAdjustmentBehavior="never"
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              paddingTop: insets.top + 16,
+              paddingBottom: insets.bottom + 120,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={styles.header}>
@@ -355,18 +362,14 @@ export default function WardrobeScreen() {
             )
           }
         />
-      </SafeAreaView>
-    </GradientBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  safeArea: { flex: 1 },
   listContent: {
     paddingHorizontal: nativeLayout.screenHorizontalPadding,
-    paddingTop: 8,
-    paddingBottom: 36,
     flexGrow: 1,
   },
   header: { marginBottom: 24 },

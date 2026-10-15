@@ -1,0 +1,29 @@
+PATCH A — FULL-SCREEN LAYOUT ON iOS. Do only this patch. Do not change colors, texts or features.
+
+PROBLEM
+On a real iPhone there are empty bands at the top and bottom of the screen. The UI is being limited to the safe area. It must use the WHOLE screen, like a native iOS app.
+
+GOAL
+- The background fills the entire physical screen, under the status bar and under the home indicator. No band, no frame, no white or black area, on any screen.
+- Content that scrolls up must keep moving up UNDER the status bar (it must not be cut at the safe-area line).
+- Things that appear (sheets, toasts) must slide in from the real edge of the screen.
+
+RULES
+1. Do NOT use SafeAreaView anywhere (neither the one from react-native nor the one from react-native-safe-area-context). Remove all of them.
+2. Use useSafeAreaInsets() only to add padding INSIDE content. Never use it to shrink a container.
+3. Render GradientBackground ONE time, in app/_layout.tsx, as StyleSheet.absoluteFill behind the navigator. Remove it from individual screens (the full-screen camera view simply covers it).
+4. In app/_layout.tsx:
+   - Wrap everything in GestureHandlerRootView with style { flex: 1, backgroundColor: "#F5F2EB" }.
+   - Stack screenOptions: { headerShown: false, contentStyle: { backgroundColor: "transparent" }, animation: "fade" }.
+   - Add <StatusBar style="dark" translucent /> from expo-status-bar.
+5. In app.json set "userInterfaceStyle": "light", "backgroundColor": "#F5F2EB" and make sure ios.supportsTablet is false.
+6. Every screen root is a View with flex: 1, NO padding, NO margin, NO overflow: "hidden".
+7. Every ScrollView takes the full screen (it is NOT inside a padded container). Set contentInsetAdjustmentBehavior="never" and contentContainerStyle paddingTop = insets.top + 16 and paddingBottom = insets.bottom + 120 (so the last item can scroll above the floating tab bar).
+8. For fixed (non-scrolling) content, use paddingTop = insets.top + the same distance it had before. Keep the same visual positions as now; only the containers change.
+9. Do not use Dimensions.get("window").height for layout. Use flex. If the full screen size is needed, use Dimensions.get("screen").
+10. Sheets and toasts start OUTSIDE the screen (translateY equal to the full screen height) and slide in. A sheet's background must reach the physical bottom edge, and its content gets paddingBottom = insets.bottom + 16.
+
+BEFORE REPLYING
+- Search the code: no SafeAreaView must remain.
+- Check on the iPhone that the profile scrolls with items passing under the status bar.
+Reply with: files changed, and the list of screens you checked.

@@ -1,16 +1,23 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/src/theme";
 
 export default function PrivacyPlaceholderScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
 
   return (
-    <GradientBackground style={styles.fill}>
-      <SafeAreaView style={styles.fill} edges={["top", "bottom"]}>
-        <View style={styles.screen}>
+    <View style={styles.fill}>
+      <View
+        style={[
+          styles.screen,
+          {
+            paddingTop: insets.top + 24,
+            paddingBottom: insets.bottom + 24,
+          },
+        ]}
+      >
           <Pressable
             accessibilityRole="button"
             onPress={() => router.back()}
@@ -23,9 +30,8 @@ export default function PrivacyPlaceholderScreen() {
           <Text style={[styles.placeholder, { color: colors.textPrimary }]}>
             Próximamente
           </Text>
-        </View>
-      </SafeAreaView>
-    </GradientBackground>
+      </View>
+    </View>
   );
 }
 
@@ -36,7 +42,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 24,
   },
   backButton: {
     minHeight: 44,

@@ -2,14 +2,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import { tapLight } from "@/src/haptics";
 
 export default function IntroScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { profile } = useApp();
   const [starting, setStarting] = useState(false);
 
@@ -25,9 +25,13 @@ export default function IntroScreen() {
   };
 
   return (
-    <GradientBackground style={styles.fill}>
-      <SafeAreaView style={styles.fill} edges={["top", "bottom"]}>
-        <View style={styles.screen}>
+    <View style={styles.fill}>
+      <View
+        style={[
+          styles.screen,
+          { paddingTop: insets.top, paddingBottom: insets.bottom + 24 },
+        ]}
+      >
           <View style={styles.content}>
             <Animated.Text
               entering={FadeInDown.duration(250)}
@@ -58,9 +62,8 @@ export default function IntroScreen() {
               </Text>
             </Pressable>
           </Animated.View>
-        </View>
-      </SafeAreaView>
-    </GradientBackground>
+      </View>
+    </View>
   );
 }
 
@@ -71,7 +74,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingBottom: 24,
     justifyContent: "space-between",
   },
   content: {
