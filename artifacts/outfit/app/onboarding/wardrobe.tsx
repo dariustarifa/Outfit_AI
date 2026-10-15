@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   Dimensions,
   Image,
@@ -50,8 +51,9 @@ export default function WardrobeOnboardingScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromPlus = from === "plus";
   const { profile, wardrobe, loading, addItem, setProfile } = useApp();
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [mediaPermission, requestMediaPermission] =
+  const [cameraPermission, requestCameraPermission, getCameraPermission] =
+    useCameraPermissions();
+  const [mediaPermission, requestMediaPermission, getMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -71,6 +73,16 @@ export default function WardrobeOnboardingScreen() {
   const cameraRef = useRef<CameraView>(null);
   const previewScrollRef = useRef<ScrollView>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      void getCameraPermission().catch(() => undefined);
+      void getMediaPermission().catch(() => undefined);
+    });
+    return () => subscription.remove();
+  }, [getCameraPermission, getMediaPermission]);
 
   useEffect(
     () => () => {
@@ -119,7 +131,9 @@ export default function WardrobeOnboardingScreen() {
                   {
                     text: "Abrir ajustes",
                     onPress: () => {
-                      void Linking.openSettings().catch(() => undefined);
+                      void Linking.openSettings().catch(() => {
+                        setError("No se pudieron abrir los ajustes del dispositivo.");
+                      });
                     },
                   },
                 ],
@@ -680,6 +694,7 @@ export default function WardrobeOnboardingScreen() {
                 {cameraPermissionBlocked ? (
                   <Pressable
                     accessibilityRole="button"
+                    testID="wardrobe-camera-settings"
                     onPress={openCameraSettings}
                     style={styles.permissionSecondary}
                   >

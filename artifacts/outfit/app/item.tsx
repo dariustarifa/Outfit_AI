@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -39,8 +40,18 @@ export default function WardrobeItemScreen() {
   const [saving, setSaving] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [mediaPermission, requestMediaPermission] =
+  const [mediaPermission, requestMediaPermission, getMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void getMediaPermission().catch(() => undefined);
+      }
+    });
+    return () => subscription.remove();
+  }, [getMediaPermission]);
 
   useEffect(() => {
     if (!id || loading) return;
@@ -66,6 +77,7 @@ export default function WardrobeItemScreen() {
         const permission = await requestMediaPermission();
         if (!permission.granted) {
           if (permission.status === "denied" && !permission.canAskAgain) {
+            setMessage("Necesitamos acceso a tus fotos para elegir una imagen.");
             Alert.alert(
               "Acceso a fotos desactivado",
               "Activa el acceso a tus fotos en los ajustes del dispositivo.",
@@ -74,7 +86,9 @@ export default function WardrobeItemScreen() {
                 {
                   text: "Abrir ajustes",
                   onPress: () => {
-                    void Linking.openSettings().catch(() => undefined);
+                    void Linking.openSettings().catch(() => {
+                      setMessage("No se pudieron abrir los ajustes del dispositivo.");
+                    });
                   },
                 },
               ],
@@ -414,13 +428,24 @@ function CameraCaptureModal({
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getCameraPermission] =
+    useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [takingPhoto, setTakingPhoto] = useState(false);
-  const [cameraError, setCameraError] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (visible) setCameraError(false);
+    if (!visible || Platform.OS === "web") return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void getCameraPermission().catch(() => undefined);
+      }
+    });
+    return () => subscription.remove();
+  }, [getCameraPermission, visible]);
+
+  useEffect(() => {
+    if (visible) setCameraError(null);
   }, [visible]);
 
   const takePhoto = useCallback(async () => {
@@ -429,13 +454,21 @@ function CameraCaptureModal({
     try {
       const picture = await cameraRef.current.takePictureAsync({ quality: 0.85 });
       if (picture?.uri) onCapture(picture.uri);
-      else setCameraError(true);
+      else setCameraError("No se pudo tomar la foto. Comprueba la cámara e inténtalo de nuevo.");
     } catch {
-      setCameraError(true);
+      setCameraError("No se pudo tomar la foto. Comprueba la cámara e inténtalo de nuevo.");
     } finally {
       setTakingPhoto(false);
     }
   }, [onCapture, takingPhoto]);
+
+  const openCameraSettings = useCallback(async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      setCameraError("No se pudieron abrir los ajustes del dispositivo.");
+    }
+  }, []);
 
   return (
     <Modal
@@ -489,7 +522,9 @@ function CameraCaptureModal({
               </Text>
               {permission.status === "denied" && !permission.canAskAgain ? (
                 <Pressable
-                  onPress={() => void Linking.openSettings().catch(() => undefined)}
+                  accessibilityRole="button"
+                  testID="item-camera-settings"
+                  onPress={() => void openCameraSettings()}
                   style={[styles.permissionButton, { backgroundColor: colors.primary }]}
                 >
                   <Text style={[styles.permissionButtonText, { color: colors.primaryForeground }]}>
@@ -498,9 +533,13 @@ function CameraCaptureModal({
                 </Pressable>
               ) : (
                 <Pressable
+                  accessibilityRole="button"
+                  testID="request-item-camera-permission"
                   onPress={() => {
                     void selection();
-                    void requestPermission();
+                    void requestPermission().catch(() => {
+                      setCameraError("No se pudo solicitar acceso a la cámara.");
+                    });
                   }}
                   style={[styles.permissionButton, { backgroundColor: colors.primary }]}
                 >
@@ -509,6 +548,11 @@ function CameraCaptureModal({
                   </Text>
                 </Pressable>
               )}
+              {cameraError ? (
+                <Text style={[styles.cameraError, { color: colors.destructive }]}>
+                  {cameraError}
+                </Text>
+              ) : null}
             </View>
           ) : (
             <>
@@ -518,13 +562,15 @@ function CameraCaptureModal({
                   style={StyleSheet.absoluteFill}
                   facing="back"
                   animateShutter
-                  onMountError={() => setCameraError(true)}
+                  onMountError={() =>
+                    setCameraError("No se pudo iniciar la cámara. Inténtalo de nuevo.")
+                  }
                 />
                 <View pointerEvents="none" style={styles.cameraGuide} />
               </View>
               {cameraError ? (
                 <Text style={[styles.cameraError, { color: colors.destructive }]}>
-                  No se pudo tomar la foto. Comprueba la cámara e inténtalo de nuevo.
+                  {cameraError}
                 </Text>
               ) : null}
               <View style={styles.captureArea}>
