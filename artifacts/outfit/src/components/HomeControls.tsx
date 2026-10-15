@@ -27,7 +27,7 @@ import {
   X,
 } from "lucide-react-native";
 import Animated, {
-  FadeIn,
+  SlideInDown,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
@@ -35,7 +35,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
-import { nativeLayout, useColors } from "../theme";
+import {
+  BAR_HEIGHT,
+  BAR_WIDTH,
+  nativeEffects,
+  nativeLayout,
+  useColors,
+} from "../theme";
 import { success, tapLight } from "../haptics";
 import { WardrobeAddSheet } from "./WardrobeAddSheet";
 
@@ -75,6 +81,9 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const barWidth = BAR_WIDTH(width);
+  const tabSlotWidth = barWidth / 3;
+  const barBottom = Math.max(insets.bottom - 12, 12);
   const [expanded, setExpanded] = useState(false);
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [text, setText] = useState("");
@@ -254,7 +263,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
   const morphStyle = useAnimatedStyle(() => {
     const openHeight = attachments.length > 0 ? 270 : 198;
     return {
-      height: interpolate(progress.value, [0, 1], [64, openHeight]),
+      height: interpolate(progress.value, [0, 1], [BAR_HEIGHT, openHeight]),
       borderRadius: interpolate(progress.value, [0, 1], [999, 28]),
     };
   });
@@ -269,18 +278,16 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
   }));
 
   const tabBarStyle = useAnimatedStyle(() => ({
-    height: interpolate(progress.value, [0, 1], [70, 0]),
-    opacity: 1 - progress.value,
-    transform: [{ translateY: 60 * progress.value }],
+    height: interpolate(progress.value, [0, 1], [BAR_HEIGHT, 0]),
+    transform: [{ translateY: BAR_HEIGHT * progress.value }],
   }));
 
   const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: activeTabProgress.value * ((width - 104) * (2 / 3)) }],
+    transform: [{ translateX: activeTabProgress.value * (tabSlotWidth * 2) }],
   }));
 
   const canSend = Boolean(text.trim()) || attachments.length > 0;
-  const safeScreenWidth = width - 104;
-  const highlightStart = safeScreenWidth / 6 - 25;
+  const highlightStart = tabSlotWidth / 2 - 46;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -317,25 +324,23 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
       <View
         style={[
           styles.footer,
-          {
-            paddingBottom:
-              Platform.OS === "web"
-                ? Math.max(insets.bottom, 34) + 20
-                : insets.bottom + 20,
-          },
+          { bottom: barBottom },
         ]}
         pointerEvents="box-none"
       >
         {screen === "home" ? (
           <Animated.View
-            entering={FadeIn.duration(250).delay(240)}
+            entering={SlideInDown.duration(250).delay(240)}
             style={[
               styles.morphShell,
-              { width: width - 40, marginBottom: 32 },
+              { width: barWidth, marginBottom: nativeLayout.baseSpacing * 3 },
               morphStyle,
             ]}
           >
-            <GlassView borderRadius={28} style={StyleSheet.absoluteFill}>
+            <GlassView
+              borderRadius={expanded ? 28 : nativeLayout.pillRadius}
+              style={StyleSheet.absoluteFill}
+            >
               <View style={StyleSheet.absoluteFill} />
             </GlassView>
             <Animated.View
@@ -457,7 +462,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
         ) : null}
 
         <Animated.View
-          entering={FadeIn.duration(250).delay(320)}
+          entering={SlideInDown.duration(250).delay(320)}
           style={styles.tabBarEntrance}
           pointerEvents="box-none"
         >
@@ -467,7 +472,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
           >
             <GlassView
               borderRadius={nativeLayout.pillRadius}
-              style={[styles.tabBar, { width: safeScreenWidth }]}
+              style={[styles.tabBar, { width: barWidth }]}
             >
               <View style={styles.tabBarContent}>
                 <Animated.View
@@ -477,14 +482,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                     { left: highlightStart },
                     highlightStyle,
                   ]}
-                >
-                  <GlassView
-                    borderRadius={nativeLayout.pillRadius}
-                    style={styles.highlightGlass}
-                  >
-                    <View style={StyleSheet.absoluteFill} />
-                  </GlassView>
-                </Animated.View>
+                />
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Inicio"
@@ -493,7 +491,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                     void tapLight();
                     onScreenChange("home");
                   }}
-                  style={styles.tabButton}
+                  style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
                   <Home
                     size={26}
@@ -509,7 +507,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                     void tapLight();
                     setAddSheetVisible(true);
                   }}
-                  style={styles.tabButton}
+                  style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
                   <Plus size={26} color={colors.iconInactive} strokeWidth={1.5} />
                 </Pressable>
@@ -521,7 +519,7 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
                     void tapLight();
                     onScreenChange("profile");
                   }}
-                  style={styles.tabButton}
+                  style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
                   <User
                     size={26}
@@ -662,7 +660,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabBar: {
-    height: 62,
+    height: BAR_HEIGHT,
   },
   tabBarContent: {
     flex: 1,
@@ -672,16 +670,16 @@ const styles = StyleSheet.create({
   },
   activeHighlight: {
     position: "absolute",
-    top: 6,
-    width: 50,
-    height: 50,
-  },
-  highlightGlass: {
-    flex: 1,
+    top: (BAR_HEIGHT - nativeEffects.activeTabHighlight.height) / 2,
+    width: nativeEffects.activeTabHighlight.width,
+    height: nativeEffects.activeTabHighlight.height,
+    borderRadius: nativeLayout.pillRadius,
+    backgroundColor: nativeEffects.activeTabHighlight.backgroundColor,
+    borderWidth: nativeEffects.activeTabHighlight.borderWidth,
+    borderColor: nativeEffects.activeTabHighlight.borderColor,
   },
   tabButton: {
-    flex: 1,
-    height: 62,
+    height: BAR_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,

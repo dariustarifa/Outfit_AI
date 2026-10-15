@@ -1,0 +1,36 @@
+PATCH B — GLASS, TAB BAR AND SIZES. Do only this patch. Do not change texts or the behavior of other screens.
+
+1) GLASS: make it CLEAR, not frosted.
+Run: npx expo install expo-glass-effect (it is included in Expo Go; native glass works only on iOS 26+).
+Rewrite the shared component GlassView (src/components/GlassView.tsx). Keep its props. Import the native one with a different name:
+  import { GlassView as NativeGlass, isLiquidGlassAvailable } from "expo-glass-effect";
+Behavior:
+ A) If Platform.OS === "ios" and isLiquidGlassAvailable() is true: render <NativeGlass glassEffectStyle="clear" style={{ borderRadius, overflow: "hidden" }}> and NOTHING on top of it: no white overlay, no BlurView, no gradient fill. The native glass already has its own look.
+ B) Otherwise (older iOS, Android, web) use this fallback, from bottom to top:
+   1. BlurView with intensity 14 and tint "default" (LOW blur: the colored blobs behind must stay visible).
+   2. LinearGradient overlay from rgba(255,255,255,0.18) (top-left) to rgba(255,255,255,0.03) (bottom-right).
+   3. 1px border, color rgba(255,255,255,0.75).
+   4. A thin highlight line along the top edge, inside the shape: 1px high, LinearGradient from rgba(255,255,255,0.9) on the left to rgba(255,255,255,0) on the right.
+   5. Shadow: color #000, opacity 0.06, radius 20, offsetY 6.
+NEVER animate the opacity of a native glass view (it breaks the effect). To hide a glass element, slide it away with translateY instead.
+In GradientBackground raise the blob center opacity from 60% to 80%, so the glass has more color to show.
+
+2) SIZES (put them in theme.ts and use them everywhere)
+ BAR_WIDTH = screenWidth - 40   (20pt margin on each side)
+ BAR_HEIGHT = 64
+ The tab bar and the "¿Cuál es el plan de hoy?" pill must BOTH be exactly BAR_WIDTH x BAR_HEIGHT, radius 999, horizontally centered.
+
+3) TAB BAR POSITION
+ bottom = Math.max(insets.bottom - 12, 12). It must sit close to the bottom edge, but not touching it. The plan pill sits 12pt above the tab bar.
+
+4) ACTIVE TAB HIGHLIGHT
+ It must be an OVAL (pill), not a circle: width 92, height 48, radius 999, vertically centered inside the bar.
+ Do NOT use GlassView for it (no nested blur). Use a plain View with background rgba(255,255,255,0.35) and border 1px rgba(255,255,255,0.8).
+ It slides between Home and User with a spring (damping 20, stiffness 220), using translateX on the UI thread.
+ Icons: three equal slots (BAR_WIDTH / 3 each), with Home, Plus and User centered in their slot. Plus is still only a button and never gets the highlight.
+
+DONE WHEN
+- The colored blobs behind the tab bar and the plan pill are clearly visible (not milky, not white).
+- Tab bar and plan pill have identical size.
+- The highlight is an oval.
+Reply with: files changed, and whether isLiquidGlassAvailable() returned true on my device.

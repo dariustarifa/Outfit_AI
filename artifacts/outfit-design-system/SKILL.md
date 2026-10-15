@@ -33,7 +33,7 @@ shopping catalog.
 - Accent: `#9A7B4F`. Ambient blobs: sand `#E6D2B8`, gold `#D8BC8C`, and sage
   `#C9D3C1`.
 - In the native app, place three soft radial color blobs in the lower half:
-  approximately 320 pt, 60% center opacity fading to transparent at the edge.
+  approximately 320 pt, 80% center opacity fading to transparent at the edge.
   Use sand at the lower left, gold at the lower right, and sage at mid-right.
 - Keep backgrounds warm and atmospheric. Do not replace the gradient and color
   blobs with a flat white surface.
@@ -42,19 +42,26 @@ shopping catalog.
 
 Use clear, low-to-medium-opacity glass so the background remains visible:
 
-1. Native blur uses `expo-blur` at intensity 45 with a light tint.
-2. Overlay a white gradient from 32% opacity at the top-left to 6% at the
-   bottom-right.
-3. Use a 1 px border in `rgba(255,255,255,0.70)`.
-4. Use a black shadow at 8% opacity, radius 24, and vertical offset 8.
-5. Clip the content to the supplied border radius. If native blur is unavailable
-   on Android, use `rgba(255,255,255,0.35)` as the background.
+1. On iOS 26+ when `isLiquidGlassAvailable()` is true, use `expo-glass-effect`
+   with the `clear` style and no overlay on top of the native glass.
+2. Elsewhere, use `expo-blur` at intensity 14 with the default tint.
+3. Overlay a white gradient from 18% opacity at the top-left to 3% at the
+   bottom-right, then a 1 px border in `rgba(255,255,255,0.75)` and a 1 px
+   top-edge highlight fading from 90% opacity to transparent.
+4. Use a black shadow at 6% opacity, radius 20, and vertical offset 6.
+5. Clip fallback content to the supplied border radius. Keep colored blobs
+   visible through the low-blur fallback.
 
 Glass is neither frosted nor matte and must not become an opaque white card.
 Keep the colored background behind it; the translucency depends on that color.
+Never animate the opacity of native glass. Hide it by moving it with `translateY`.
 
 ## Controls and layout
 
+- The home tab bar and plan pill share a width of screen width minus 40 pt and
+  a height of 64 pt. The plan pill sits 12 pt above the bar.
+- The active tab highlight is a 92 × 48 pt plain oval with a 999 pt radius and
+  slides between Home and Profile; the add button does not receive the highlight.
 - Primary buttons are charcoal `#2B2B2E` pills with `#F5F2EB` text, height 56.
   Disabled buttons use 40% opacity.
 - Use 24 px card corners and 999 px pill corners.

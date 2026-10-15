@@ -65,6 +65,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "expo-blur": "~57.0.3",
+    "expo-glass-effect": "~57.0.4",
     "expo-linear-gradient": "~57.0.2",
     "framer-motion": "^12.23.24",
     "input-otp": "^1.4.2",

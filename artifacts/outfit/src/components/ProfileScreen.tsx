@@ -654,7 +654,7 @@ export function ProfileScreen() {
       <Modal
         visible={activeSheet !== null}
         transparent
-        animationType="fade"
+        animationType="none"
         statusBarTranslucent
         onRequestClose={closeSheet}
       >

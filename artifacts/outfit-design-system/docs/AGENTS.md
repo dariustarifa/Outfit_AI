@@ -20,8 +20,9 @@ on it and import its theme and components directly.
 - `src/lib/` (`cn`) and `src/hooks/` — exported as `./lib/*` and `./hooks/*`.
 - `src/lib/native-theme.tsx`, `src/hooks/use-colors.tsx`, and
   `src/components/native/` — portable native theme, system color-scheme hook,
-  and Expo-ready background/glass primitives. Expo consumers import these
-  directly; keep only domain state and compositions in the app.
+  and Expo-ready background/glass primitives. Glass uses Liquid Glass on
+  supported iOS versions and a low-blur fallback elsewhere. Expo consumers
+  import these directly; keep only domain state and compositions in the app.
 - `src/App.tsx` — the entry point for the living style guide.
 - `src/preview/DesignSystemBrowser.tsx` — the persistent grouped navigation,
   branded header, search, deep links, and active page shell.

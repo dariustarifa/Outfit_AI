@@ -13,6 +13,7 @@ import {
 import { router } from "expo-router";
 import Animated, {
   FadeInDown,
+  SlideInDown,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -525,7 +526,7 @@ export default function ProgressiveOnboardingScreen() {
 
           <Animated.View
             key={`content-${step}`}
-            entering={FadeInDown.duration(250).delay(120)}
+            entering={SlideInDown.duration(250).delay(120)}
           >
             <GlassView style={styles.formCard}>
               <View style={styles.formContent}>

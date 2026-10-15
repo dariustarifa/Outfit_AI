@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { ArrowRight, CloudSun, Plus, Shirt } from "lucide-react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
@@ -217,7 +217,7 @@ export default function HomeScreen() {
                 </Animated.View>
 
                 <Animated.View
-                  entering={FadeInDown.duration(250).delay(190)}
+                  entering={SlideInDown.duration(250).delay(190)}
                   style={styles.recommendationSection}
                 >
                   <View style={styles.sectionHeading}>

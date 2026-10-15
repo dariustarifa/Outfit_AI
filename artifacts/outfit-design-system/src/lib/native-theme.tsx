@@ -41,20 +41,28 @@ export const nativeLayout = {
 
 export const nativeEffects = {
   glass: {
-    blurIntensity: 45,
-    tint: "light" as const,
-    borderColor: "rgba(255,255,255,0.70)",
-    gradientStart: "rgba(255,255,255,0.32)",
-    gradientEnd: "rgba(255,255,255,0.06)",
-    androidFallback: "rgba(255,255,255,0.35)",
-    shadowColor: "#000000",
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    shadowOffsetY: 8,
+    blurIntensity: 14,
+    tint: "default" as const,
+    borderColor: "rgba(255,255,255,0.75)",
+    gradientStart: "rgba(255,255,255,0.18)",
+    gradientEnd: "rgba(255,255,255,0.03)",
+    highlightStart: "rgba(255,255,255,0.9)",
+    highlightEnd: "rgba(255,255,255,0)",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    shadowOffsetY: 6,
+  },
+  activeTabHighlight: {
+    width: 92,
+    height: 48,
+    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    borderColor: "rgba(255,255,255,0.8)",
   },
   ambient: {
     diameter: 320,
-    centerOpacity: 0.6,
+    centerOpacity: 0.8,
   },
 } as const;
 
