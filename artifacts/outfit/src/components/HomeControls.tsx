@@ -27,6 +27,11 @@ import {
   X,
 } from "lucide-react-native";
 import { router, usePathname } from "expo-router";
+import {
+  getTabNavigationAction,
+  isProfileTabActive,
+  type TabRouteTarget,
+} from "@/src/tab-navigation";
 import Animated, {
   Easing,
   Extrapolation,
@@ -85,7 +90,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const pathname = usePathname();
-  const isProfile = pathname === "/profile";
+  const isProfile = isProfileTabActive(pathname);
   const keyboard = useAnimatedKeyboard();
   const barWidth = BAR_WIDTH(width);
   const tabSlotWidth = barWidth / 3;
@@ -147,6 +152,17 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast(message);
     toastTimer.current = setTimeout(() => setToast(""), 1900);
+  };
+
+  const navigateToTab = (target: TabRouteTarget) => {
+    const action = getTabNavigationAction(pathname, target);
+    if (!action) return;
+
+    if (action.type === "push") {
+      router.push(action.href);
+    } else {
+      router.dismissTo(action.href);
+    }
   };
 
   const finishComposerClose = useCallback(() => {
@@ -603,7 +619,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                   accessibilityState={{ selected: !isProfile }}
                   onPress={() => {
                     void tapLight();
-                    if (isProfile) router.replace("/");
+                    navigateToTab("home");
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
@@ -630,7 +646,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                   accessibilityState={{ selected: isProfile }}
                   onPress={() => {
                     void tapLight();
-                    if (!isProfile) router.push("/profile");
+                    navigateToTab("profile");
                   }}
                   style={[styles.tabButton, { width: tabSlotWidth }]}
                 >
