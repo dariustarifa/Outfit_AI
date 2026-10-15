@@ -26,7 +26,7 @@ import type {
   WeatherSnapshot,
 } from "../types";
 import type { NewWardrobeItem } from "../wardrobe-actions";
-import { mergeProfileUpdate } from "../profile-update";
+import { updateAndSaveProfile } from "../profile-update";
 import { saveProfileWithPhoto } from "../profile-storage";
 
 export interface AppContextValue extends StoredAppData {
@@ -131,16 +131,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (updates: ProfileUpdate) => {
-      const existing = currentData.current.profile;
-      if (!existing) {
-        throw new Error("Cannot update a profile that has not been created.");
-      }
-
-      const saved = await setProfile(mergeProfileUpdate(existing, updates));
-      if (!saved) throw new Error("Could not save profile.");
-      return saved;
-    },
+    (updates: ProfileUpdate) =>
+      updateAndSaveProfile(currentData.current.profile, updates, setProfile),
     [setProfile],
   );
 

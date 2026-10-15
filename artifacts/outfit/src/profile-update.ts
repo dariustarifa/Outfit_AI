@@ -10,3 +10,17 @@ export function mergeProfileUpdate(
     onboardingCompleted: profile.onboardingCompleted,
   };
 }
+
+export async function updateAndSaveProfile(
+  existingProfile: Profile | null,
+  updates: ProfileUpdate,
+  saveProfile: (profile: Profile) => Promise<Profile | null>,
+): Promise<Profile> {
+  if (!existingProfile) {
+    throw new Error("Cannot update a profile that has not been created.");
+  }
+
+  const saved = await saveProfile(mergeProfileUpdate(existingProfile, updates));
+  if (!saved) throw new Error("Could not save profile.");
+  return saved;
+}

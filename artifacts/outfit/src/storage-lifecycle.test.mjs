@@ -3,8 +3,11 @@ import test from "node:test";
 import { createLocalStorage } from "./storage-core.ts";
 import { createWardrobeActions } from "./wardrobe-actions.ts";
 import { saveGallerySelection } from "./gallery-save.ts";
+import { getStartupScreen } from "./onboarding-progress.ts";
+import { updateAndSaveProfile } from "./profile-update.ts";
+import { saveProfileWithPhoto } from "./profile-storage.ts";
 
-function createTestEnvironment() {
+function createTestEnvironment(platform = "ios") {
   const values = new Map();
   const files = new Map();
   const directories = new Set();
@@ -59,16 +62,28 @@ function createTestEnvironment() {
       files.delete(uri);
     },
   };
-  const storage = createLocalStorage({
-    asyncStorage,
-    fileSystem,
-    platform: "ios",
-    persistWebImage: async () => {
-      throw new Error("Web image persistence is not used in native tests.");
-    },
-  });
+  const createStorage = () =>
+    createLocalStorage({
+      asyncStorage,
+      fileSystem,
+      platform,
+      persistWebImage: async () => {
+        throw new Error("Web image persistence is not used in native tests.");
+      },
+    });
+  let storage = createStorage();
 
   let currentData = { profile: null, wardrobe: [] };
+  async function saveProfile(profile) {
+    return saveProfileWithPhoto(profile, currentData, {
+      copyImageToAppDocuments: storage.copyImageToAppDocuments,
+      async commit(next) {
+        await storage.saveAppData(next);
+        currentData = next;
+      },
+      removeStoredImage: storage.removeStoredImage,
+    });
+  }
   const actions = createWardrobeActions({
     getData: () => currentData,
     async commit(next) {
@@ -89,9 +104,21 @@ function createTestEnvironment() {
     fileSystem,
     files,
     storage,
+    async updateProfile(updates) {
+      return updateAndSaveProfile(currentData.profile, updates, saveProfile);
+    },
     async reload() {
       currentData = await storage.loadAppData();
       return currentData;
+    },
+    async restart() {
+      storage = createStorage();
+      currentData = await storage.loadAppData();
+      return currentData;
+    },
+    async seedProfile(profile) {
+      await storage.saveAppData({ profile, wardrobe: [] });
+      currentData = { profile, wardrobe: [] };
     },
     setSourcePhoto(uri, contents) {
       files.set(uri, contents);
@@ -103,6 +130,48 @@ function createTestEnvironment() {
       failNextDelete = true;
     },
   };
+}
+
+for (const platform of ["ios", "android"]) {
+  test(`${platform} profile edits remain saved after restarting without reopening setup`, async () => {
+    const env = createTestEnvironment(platform);
+    const originalProfile = {
+      name: "Alex",
+      preferredName: "A",
+      age: 30,
+      heightCm: 170,
+      bodyPhotoUri: "",
+      city: "Madrid",
+      latitude: 40.4,
+      longitude: -3.7,
+      photoConsent: true,
+      onboardingCompleted: true,
+    };
+    await env.seedProfile(originalProfile);
+
+    await env.updateProfile({
+      name: "Alex Rivera",
+      preferredName: "Lex",
+      age: 34,
+      heightCm: 176,
+      city: "Sevilla",
+      latitude: 37.4,
+      longitude: -5.9,
+    });
+
+    const restarted = await env.restart();
+    assert.deepEqual(restarted.profile, {
+      ...originalProfile,
+      name: "Alex Rivera",
+      preferredName: "Lex",
+      age: 34,
+      heightCm: 176,
+      city: "Sevilla",
+      latitude: 37.4,
+      longitude: -5.9,
+    });
+    assert.equal(getStartupScreen(false, restarted.profile), "home");
+  });
 }
 
 test("a captured photo is copied into app documents and remains readable after reload", async () => {
