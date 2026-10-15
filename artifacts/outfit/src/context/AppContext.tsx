@@ -26,6 +26,7 @@ import type {
 } from "../types";
 import type { NewWardrobeItem } from "../wardrobe-actions";
 import { mergeProfileUpdate } from "../profile-update";
+import { saveProfileWithPhoto } from "../profile-storage";
 
 export interface AppContextValue extends StoredAppData {
   weather: WeatherSnapshot | null;
@@ -113,24 +114,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setProfile = useCallback(
     async (nextProfile: Profile | null) => {
       try {
-        const previousUri = currentData.current.profile?.bodyPhotoUri;
-        const savedProfile =
-          nextProfile && nextProfile.bodyPhotoUri
-            ? {
-                ...nextProfile,
-                bodyPhotoUri: await copyImageToAppDocuments(
-                  nextProfile.bodyPhotoUri,
-                ),
-              }
-            : nextProfile;
-        await commit({ ...currentData.current, profile: savedProfile });
-        if (
-          previousUri &&
-          previousUri !== savedProfile?.bodyPhotoUri
-        ) {
-          await removeStoredImage(previousUri);
-        }
-        return savedProfile;
+        return await saveProfileWithPhoto(nextProfile, currentData.current, {
+          copyImageToAppDocuments,
+          commit,
+          removeStoredImage,
+        });
       } catch (cause) {
         const nextError =
           cause instanceof Error ? cause : new Error("Could not save profile.");

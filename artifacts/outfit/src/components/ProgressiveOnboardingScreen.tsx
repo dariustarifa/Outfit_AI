@@ -46,6 +46,7 @@ import {
   getInitialOnboardingStep,
   type OnboardingStep,
 } from "../onboarding-progress";
+import { selectProfilePhoto } from "../profile-photo";
 
 type SearchState = "idle" | "waiting" | "loading" | "success" | "error";
 
@@ -289,26 +290,27 @@ export default function ProgressiveOnboardingScreen() {
   const choosePhoto = async () => {
     setMessage("");
     try {
-      if (Platform.OS !== "web" && !mediaPermission?.granted) {
-        const permission = await requestMediaPermission();
-        if (!permission.granted) {
-          setMessage(
-            "Necesitamos permiso para acceder a tus fotos. También puedes hacer una foto.",
-          );
-          return;
-        }
+      const selection = await selectProfilePhoto(
+        Platform.OS === "web" ? true : mediaPermission?.granted,
+        requestMediaPermission,
+        () =>
+          ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            quality: 0.82,
+          }),
+      );
+      if (selection.status === "permission-denied") {
+        setMessage(
+          "Necesitamos permiso para acceder a tus fotos. También puedes hacer una foto.",
+        );
+        return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        quality: 0.82,
-      });
-      if (result.canceled) return;
-      const uri = result.assets[0]?.uri;
-      if (!uri) {
+      if (selection.status === "cancelled") return;
+      if (selection.status === "missing-uri") {
         setMessage("No pudimos leer esa foto. Prueba a elegir otra.");
         return;
       }
-      updateForm("bodyPhotoUri", uri);
+      updateForm("bodyPhotoUri", selection.uri);
     } catch {
       setMessage("No se pudo abrir la galería. Inténtalo de nuevo.");
     }
@@ -317,27 +319,27 @@ export default function ProgressiveOnboardingScreen() {
   const takePhoto = async () => {
     setMessage("");
     try {
-      const permission =
-        cameraPermission?.granted
-          ? cameraPermission
-          : await requestCameraPermission();
-      if (!permission.granted) {
+      const selection = await selectProfilePhoto(
+        cameraPermission?.granted,
+        requestCameraPermission,
+        () =>
+          ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            quality: 0.82,
+          }),
+      );
+      if (selection.status === "permission-denied") {
         setMessage(
           "Necesitamos acceso a la cámara. Puedes elegir una foto de tu galería.",
         );
         return;
       }
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
-        quality: 0.82,
-      });
-      if (result.canceled) return;
-      const uri = result.assets[0]?.uri;
-      if (!uri) {
+      if (selection.status === "cancelled") return;
+      if (selection.status === "missing-uri") {
         setMessage("No pudimos leer esa foto. Prueba a hacer otra.");
         return;
       }
-      updateForm("bodyPhotoUri", uri);
+      updateForm("bodyPhotoUri", selection.uri);
     } catch {
       setMessage(
         "No se pudo abrir la cámara. Puedes elegir una foto de tu galería.",
