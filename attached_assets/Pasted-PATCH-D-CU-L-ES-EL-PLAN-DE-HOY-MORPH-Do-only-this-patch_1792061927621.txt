@@ -1,0 +1,25 @@
+PATCH D — "¿CUÁL ES EL PLAN DE HOY?" MORPH. Do only this patch. Keep all content and behavior. Change only how it animates and how it looks.
+
+PROBLEMS: the animation stutters, and the expanded panel looks too square. Everything must feel round.
+
+SHAPE
+- Collapsed: BAR_WIDTH x BAR_HEIGHT pill, radius 999 (as now).
+- Expanded: radius 36 (never less than 32). The input field inside is a pill with radius 28. Attachment thumbnails have radius 18. The paperclip and send buttons are perfect circles. The panel's horizontal margin stays 20.
+
+ANIMATION (react-native-reanimated, everything on the UI thread)
+1. ONE shared value "progress" (0 to 1) drives everything. Do not use useState to drive any frame of the animation.
+2. Animated style of the panel container: height = interpolate(progress, [0,1], [BAR_HEIGHT, expandedHeight]) and borderRadius = interpolate(progress, [0,1], [999, 36]). Width and horizontal position do NOT change.
+3. Use withTiming with duration 380 and Easing.bezier(0.22, 1, 0.36, 1) to open, and duration 280 to close. No bounce, no overshoot.
+4. The text "¿Cuál es el plan de hoy?" and the arrow fade out between progress 0 and 0.3. The input content (thumbnails, text field, buttons) fades in between progress 0.45 and 1 and slides up 8pt. Use interpolate with those ranges.
+5. The panel stays mounted all the time. Do NOT mount or unmount the glass view during the animation. Do NOT change the BlurView intensity during the animation. Do NOT animate shadow properties (if it still lags, remove the shadow while the panel is expanded).
+6. Never animate the opacity of the native glass view. The tab bar hides by sliding down (translateY = BAR_HEIGHT + insets.bottom + 40) with the same timing. No opacity fade.
+7. Keyboard: call inputRef.focus() at the START of the opening animation, not after it. Use useAnimatedKeyboard() from react-native-reanimated and set the panel's bottom = Math.max(collapsedBottom, keyboard.height.value + 12), so the panel rises together with the keyboard. With the keyboard closed, the panel returns to its place above the tab bar.
+8. expandedHeight is 160 when there is no text and no attachments. When the text grows (the field has a max height of 140) or thumbnails appear, animate the height with withTiming 150 ms. Never jump.
+9. Closing (tap on the backdrop, or keyboard dismissed while the input is empty): call Keyboard.dismiss() and animate progress to 0 at the same time.
+10. Backdrop: rgba(0,0,0,0.10), opacity = progress.
+
+DONE WHEN
+- Opening and closing run smoothly at 60 fps on my iPhone, with no jump at the start or the end.
+- The expanded panel has big round corners everywhere.
+- The keyboard and the panel rise together.
+Reply with: files changed, and anything that still stutters.

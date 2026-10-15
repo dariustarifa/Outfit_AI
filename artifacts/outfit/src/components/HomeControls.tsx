@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   Alert,
@@ -27,11 +27,15 @@ import {
   X,
 } from "lucide-react-native";
 import Animated, {
-  SlideInDown,
+  Easing,
+  Extrapolation,
+  runOnJS,
   interpolate,
   useAnimatedStyle,
+  useAnimatedKeyboard,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
@@ -58,6 +62,7 @@ type Screen = "home" | "profile";
 interface HomeControlsProps {
   screen: Screen;
   onScreenChange: (screen: Screen) => void;
+  onComposerExpandedChange: (expanded: boolean) => void;
 }
 
 const spring = { damping: 20, stiffness: 220, mass: 1 };
@@ -77,24 +82,33 @@ function makeAttachment(
   };
 }
 
-export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
+export function HomeControls({
+  screen,
+  onScreenChange,
+  onComposerExpandedChange,
+}: HomeControlsProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const keyboard = useAnimatedKeyboard();
   const barWidth = BAR_WIDTH(width);
   const tabSlotWidth = barWidth / 3;
   const barBottom = Math.max(insets.bottom - 12, 12);
   const [expanded, setExpanded] = useState(false);
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [text, setText] = useState("");
+  const [inputHeight, setInputHeight] = useState(56);
   const [attachments, setAttachments] = useState<PlanAttachment[]>([]);
   const [toast, setToast] = useState("");
   const inputRef = useRef<TextInput>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastOffset = useSharedValue(Dimensions.get("screen").height);
   const progress = useSharedValue(0);
+  const expandedHeight = useSharedValue(160);
   const activeTabProgress = useSharedValue(screen === "profile" ? 1 : 0);
   const pressScale = useSharedValue(1);
+  const closeStarted = useRef(false);
+  const openStarted = useRef(false);
   const toastAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: toastOffset.value }],
   }));
@@ -109,8 +123,15 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
   }, [toast, toastOffset]);
 
   useEffect(() => {
-    progress.value = withSpring(expanded ? 1 : 0, spring);
-  }, [expanded, progress]);
+    const targetHeight =
+      160 +
+      (attachments.length > 0 ? 64 : 0) +
+      Math.max(0, inputHeight - 56);
+    expandedHeight.value = withTiming(targetHeight, {
+      duration: 150,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [attachments.length, expandedHeight, inputHeight]);
 
   useEffect(() => {
     activeTabProgress.value = withSpring(
@@ -118,14 +139,6 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
       spring,
     );
   }, [activeTabProgress, screen]);
-
-  useEffect(() => {
-    if (!expanded) return;
-    const listener = Keyboard.addListener("keyboardDidHide", () => {
-      if (!text.trim()) setExpanded(false);
-    });
-    return () => listener.remove();
-  }, [expanded, text]);
 
   useEffect(
     () => () => {
@@ -140,16 +153,52 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
     toastTimer.current = setTimeout(() => setToast(""), 1900);
   };
 
+  const finishComposerClose = useCallback(() => {
+    openStarted.current = false;
+    setExpanded(false);
+    onComposerExpandedChange(false);
+  }, [onComposerExpandedChange]);
+
+  const closeComposer = useCallback(() => {
+    if (closeStarted.current) return;
+    closeStarted.current = true;
+    Keyboard.dismiss();
+    progress.value = withTiming(
+      0,
+      {
+        duration: 280,
+        easing: Easing.bezier(0.22, 1, 0.36, 1),
+      },
+      (finished) => {
+        if (finished) runOnJS(finishComposerClose)();
+      },
+    );
+  }, [finishComposerClose, progress]);
+
   const openComposer = () => {
     void tapLight();
+    closeStarted.current = false;
     setExpanded(true);
-    setTimeout(() => inputRef.current?.focus(), 120);
+    onComposerExpandedChange(true);
   };
 
-  const closeComposer = () => {
-    setExpanded(false);
-    Keyboard.dismiss();
-  };
+  useEffect(() => {
+    if (!expanded || openStarted.current) return;
+    openStarted.current = true;
+    inputRef.current?.focus();
+    progress.value = withTiming(1, {
+      duration: 380,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+    });
+  }, [expanded, progress]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const listener = Keyboard.addListener("keyboardDidHide", () => {
+      if (!text.trim() && !closeStarted.current) closeComposer();
+    });
+    return () => listener.remove();
+  }, [closeComposer, expanded, text]);
 
   const appendImage = (asset: ImagePicker.ImagePickerAsset) => {
     setAttachments((previous) => [
@@ -253,34 +302,73 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
     const payload = { text: text.trim(), attachments };
     void success();
     setText("");
+    setInputHeight(56);
     setAttachments([]);
-    setExpanded(false);
-    Keyboard.dismiss();
+    closeComposer();
     onSubmitPlan(payload);
     showToast("Enviado");
   };
 
   const morphStyle = useAnimatedStyle(() => {
-    const openHeight = attachments.length > 0 ? 270 : 198;
     return {
-      height: interpolate(progress.value, [0, 1], [BAR_HEIGHT, openHeight]),
-      borderRadius: interpolate(progress.value, [0, 1], [999, 28]),
+      height: interpolate(
+        progress.value,
+        [0, 1],
+        [BAR_HEIGHT, expandedHeight.value],
+      ),
+      borderRadius: interpolate(progress.value, [0, 1], [999, 36]),
     };
   });
 
   const composerContentStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
+    opacity: interpolate(
+      progress.value,
+      [0.45, 1],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
+    transform: [
+      {
+        translateY: interpolate(
+          progress.value,
+          [0.45, 1],
+          [8, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
   }));
 
   const planButtonStyle = useAnimatedStyle(() => ({
-    opacity: 1 - progress.value,
+    opacity: interpolate(
+      progress.value,
+      [0, 0.3],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
     transform: [{ scale: pressScale.value }],
   }));
 
   const tabBarStyle = useAnimatedStyle(() => ({
-    height: interpolate(progress.value, [0, 1], [BAR_HEIGHT, 0]),
-    transform: [{ translateY: BAR_HEIGHT * progress.value }],
+    transform: [
+      {
+        translateY:
+          progress.value * (BAR_HEIGHT + insets.bottom + 40),
+      },
+    ],
   }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
+
+  const panelBottomStyle = useAnimatedStyle(() => {
+    const collapsedBottom =
+      barBottom + BAR_HEIGHT + nativeLayout.baseSpacing * 3;
+    return {
+      bottom: Math.max(collapsedBottom, keyboard.height.value + 12),
+    };
+  });
 
   const highlightStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: activeTabProgress.value * (tabSlotWidth * 2) }],
@@ -291,13 +379,17 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {expanded ? (
+      <Animated.View
+        pointerEvents={expanded ? "auto" : "none"}
+        style={[StyleSheet.absoluteFill, styles.dim, backdropStyle]}
+      >
         <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Cerrar el campo de petición"
           onPress={closeComposer}
-          style={[StyleSheet.absoluteFill, styles.dim]}
+          style={StyleSheet.absoluteFill}
         />
-      ) : null}
+      </Animated.View>
 
       {toast ? (
         <Animated.View
@@ -322,23 +414,20 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
       ) : null}
 
       <View
-        style={[
-          styles.footer,
-          { bottom: barBottom },
-        ]}
+        style={styles.footer}
         pointerEvents="box-none"
       >
         {screen === "home" ? (
           <Animated.View
-            entering={SlideInDown.duration(250).delay(240)}
             style={[
               styles.morphShell,
-              { width: barWidth, marginBottom: nativeLayout.baseSpacing * 3 },
+              { width: barWidth },
+              panelBottomStyle,
               morphStyle,
             ]}
           >
             <GlassView
-              borderRadius={expanded ? 28 : nativeLayout.pillRadius}
+              borderRadius={nativeLayout.pillRadius}
               style={StyleSheet.absoluteFill}
             >
               <View style={StyleSheet.absoluteFill} />
@@ -347,123 +436,136 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
               pointerEvents={expanded ? "auto" : "none"}
               style={[StyleSheet.absoluteFill, composerContentStyle]}
             >
-              {expanded ? (
-                <View style={styles.composerContent}>
-                  {attachments.length > 0 ? (
-                    <ScrollView
-                      horizontal
-                      contentInsetAdjustmentBehavior="never"
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.attachmentList}
-                      contentContainerStyle={styles.attachmentRow}
-                    >
-                      {attachments.map((attachment) => (
-                        <View key={attachment.id} style={styles.attachment}>
-                          {attachment.kind === "image" ? (
-                            <Image
-                              source={{ uri: attachment.uri }}
-                              style={styles.attachmentImage}
-                              accessibilityLabel={attachment.name}
-                            />
-                          ) : (
-                            <View
-                              style={[
-                                styles.fileAttachment,
-                                { backgroundColor: colors.secondary },
-                              ]}
-                            >
-                              <FileText size={22} color={colors.textSecondary} />
-                            </View>
-                          )}
-                          <Pressable
-                            accessibilityLabel={`Quitar ${attachment.name}`}
-                            onPress={() =>
-                              setAttachments((previous) =>
-                                previous.filter((item) => item.id !== attachment.id),
-                              )
-                            }
-                            hitSlop={8}
+              <View style={styles.composerContent}>
+                {attachments.length > 0 ? (
+                  <ScrollView
+                    horizontal
+                    contentInsetAdjustmentBehavior="never"
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.attachmentList}
+                    contentContainerStyle={styles.attachmentRow}
+                  >
+                    {attachments.map((attachment) => (
+                      <View key={attachment.id} style={styles.attachment}>
+                        {attachment.kind === "image" ? (
+                          <Image
+                            source={{ uri: attachment.uri }}
+                            style={styles.attachmentImage}
+                            accessibilityLabel={attachment.name}
+                          />
+                        ) : (
+                          <View
                             style={[
-                              styles.removeAttachment,
-                              { backgroundColor: colors.textPrimary },
+                              styles.fileAttachment,
+                              { backgroundColor: colors.secondary },
                             ]}
                           >
-                            <X size={12} color={colors.background} strokeWidth={2} />
-                          </Pressable>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  ) : null}
+                            <FileText size={22} color={colors.textSecondary} />
+                          </View>
+                        )}
+                        <Pressable
+                          accessibilityLabel={`Quitar ${attachment.name}`}
+                          onPress={() =>
+                            setAttachments((previous) =>
+                              previous.filter((item) => item.id !== attachment.id),
+                            )
+                          }
+                          hitSlop={8}
+                          style={[
+                            styles.removeAttachment,
+                            { backgroundColor: colors.textPrimary },
+                          ]}
+                        >
+                          <X size={12} color={colors.background} strokeWidth={2} />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </ScrollView>
+                ) : null}
 
-                  <TextInput
-                    ref={inputRef}
-                    value={text}
-                    onChangeText={setText}
-                    placeholder="Escribe tu petición…"
-                    placeholderTextColor={colors.textSecondary}
-                    multiline
-                    autoFocus
-                    scrollEnabled
-                    textAlignVertical="top"
-                    maxLength={3000}
+                <TextInput
+                  ref={inputRef}
+                  value={text}
+                  onChangeText={setText}
+                  onContentSizeChange={({ nativeEvent }) => {
+                    const nextHeight = Math.min(
+                      140,
+                      Math.max(56, nativeEvent.contentSize.height + 16),
+                    );
+                    setInputHeight((current) =>
+                      Math.abs(current - nextHeight) < 1 ? current : nextHeight,
+                    );
+                  }}
+                  placeholder="Escribe tu petición…"
+                  placeholderTextColor={colors.textSecondary}
+                  multiline
+                  scrollEnabled
+                  textAlignVertical="top"
+                  maxLength={3000}
+                  style={[
+                    styles.input,
+                    {
+                      color: colors.textPrimary,
+                      backgroundColor: colors.background,
+                      height: inputHeight,
+                    },
+                  ]}
+                />
+
+                <View style={styles.composerActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Adjuntar archivo o foto"
+                    onPress={openAttachmentOptions}
                     style={[
-                      styles.input,
-                      { color: colors.textPrimary },
+                      styles.attachButton,
+                      { backgroundColor: colors.background },
                     ]}
-                  />
-
-                  <View style={styles.composerActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Adjuntar archivo o foto"
-                      onPress={openAttachmentOptions}
-                      style={styles.attachButton}
-                    >
-                      <Paperclip size={22} color={colors.textSecondary} strokeWidth={1.7} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Enviar petición"
-                      accessibilityState={{ disabled: !canSend }}
-                      disabled={!canSend}
-                      onPress={sendPlan}
-                      style={[
-                        styles.sendButton,
-                        { backgroundColor: colors.gold, opacity: canSend ? 1 : 0.4 },
-                      ]}
-                    >
-                      <ArrowUp size={22} color={colors.background} strokeWidth={2} />
-                    </Pressable>
-                  </View>
+                  >
+                    <Paperclip size={22} color={colors.textSecondary} strokeWidth={1.7} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Enviar petición"
+                    accessibilityState={{ disabled: !canSend }}
+                    disabled={!canSend}
+                    onPress={sendPlan}
+                    style={[
+                      styles.sendButton,
+                      { backgroundColor: colors.gold, opacity: canSend ? 1 : 0.4 },
+                    ]}
+                  >
+                    <ArrowUp size={22} color={colors.background} strokeWidth={2} />
+                  </Pressable>
                 </View>
-              ) : null}
+              </View>
             </Animated.View>
-            {!expanded ? (
-              <Animated.View style={[styles.planButton, planButtonStyle]}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={openComposer}
-                  onPressIn={() => {
-                    pressScale.value = withSpring(0.97, spring);
-                  }}
-                  onPressOut={() => {
-                    pressScale.value = withSpring(1, spring);
-                  }}
-                  style={styles.planPressable}
-                >
-                  <Text style={[styles.planText, { color: colors.textPrimary }]}>
-                    ¿Cuál es el plan de hoy?
-                  </Text>
-                  <ArrowRight size={20} color={colors.gold} strokeWidth={1.8} />
-                </Pressable>
-              </Animated.View>
-            ) : null}
+            <Animated.View
+              pointerEvents={expanded ? "none" : "auto"}
+              style={[styles.planButton, planButtonStyle]}
+            >
+              <Pressable
+                accessibilityRole="button"
+                onPress={openComposer}
+                onPressIn={() => {
+                  pressScale.value = withSpring(0.97, spring);
+                }}
+                onPressOut={() => {
+                  pressScale.value = withSpring(1, spring);
+                }}
+                style={styles.planPressable}
+              >
+                <Text style={[styles.planText, { color: colors.textPrimary }]}>
+                  ¿Cuál es el plan de hoy?
+                </Text>
+                <ArrowRight size={20} color={colors.gold} strokeWidth={1.8} />
+              </Pressable>
+            </Animated.View>
           </Animated.View>
         ) : null}
 
         <Animated.View
-          entering={SlideInDown.duration(250).delay(320)}
-          style={styles.tabBarEntrance}
+          style={[styles.tabBarEntrance, { bottom: barBottom }]}
           pointerEvents="box-none"
         >
           <Animated.View
@@ -543,10 +645,11 @@ export function HomeControls({ screen, onScreenChange }: HomeControlsProps) {
 const styles = StyleSheet.create({
   dim: {
     zIndex: 1,
-    backgroundColor: "rgba(0,0,0,0.12)",
+    backgroundColor: "rgba(0,0,0,0.10)",
   },
   footer: {
     position: "absolute",
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
@@ -555,8 +658,10 @@ const styles = StyleSheet.create({
   },
   morphShell: {
     overflow: "hidden",
-    position: "relative",
-    alignSelf: "center",
+    position: "absolute",
+    left: 20,
+    right: 20,
+    zIndex: 3,
   },
   planButton: {
     flex: 1,
@@ -591,18 +696,18 @@ const styles = StyleSheet.create({
   attachment: {
     width: 56,
     height: 56,
-    borderRadius: 12,
+    borderRadius: 18,
     overflow: "visible",
   },
   attachmentImage: {
     width: 56,
     height: 56,
-    borderRadius: 12,
+    borderRadius: 18,
   },
   fileAttachment: {
     width: 56,
     height: 56,
-    borderRadius: 12,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -618,11 +723,16 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
   input: {
-    flex: 1,
+    width: "100%",
+    flexShrink: 1,
     minHeight: 56,
     maxHeight: 140,
-    padding: 0,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 0,
     borderWidth: 0,
+    borderRadius: 28,
+    overflow: "hidden",
     outlineWidth: 0,
     outlineColor: "transparent",
     fontFamily: "Satoshi_400Regular",
@@ -639,6 +749,7 @@ const styles = StyleSheet.create({
   attachButton: {
     width: 44,
     height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -655,6 +766,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabBarEntrance: {
+    position: "absolute",
+    left: 0,
+    right: 0,
     width: "100%",
     alignItems: "center",
   },

@@ -55,6 +55,7 @@ export default function HomeScreen() {
   const { profile, wardrobe, weather, setWeather, loading } = useApp();
   const startupScreen = getStartupScreen(loading, profile);
   const [screen, setScreen] = useState<Screen>("home");
+  const [planComposerOpen, setPlanComposerOpen] = useState(false);
   const [clockDate, setClockDate] = useState(() => new Date());
   const dailyItems = useMemo(
     () => recommendDailyOutfit(wardrobe, clockDate, weather),
@@ -164,7 +165,9 @@ export default function HomeScreen() {
     <View style={styles.fill}>
       <KeyboardAvoidingView
         style={styles.fill}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={
+          Platform.OS === "ios" && !planComposerOpen ? "padding" : undefined
+        }
         keyboardVerticalOffset={0}
       >
         <View style={styles.screen}>
@@ -356,7 +359,11 @@ export default function HomeScreen() {
             ) : (
               <ProfileScreen />
             )}
-          <HomeControls screen={screen} onScreenChange={setScreen} />
+          <HomeControls
+            screen={screen}
+            onScreenChange={setScreen}
+            onComposerExpandedChange={setPlanComposerOpen}
+          />
         </View>
       </KeyboardAvoidingView>
     </View>
