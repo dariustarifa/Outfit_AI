@@ -45,11 +45,11 @@ function extendPalette<T extends Record<string, string>>(
       mode === "dark"
         ? "rgba(255,255,255,0.16)"
         : "rgba(255,255,255,0.7)",
-    placeholder: mode === "dark" ? "#8993A1" : "#6B6761",
+    placeholder: palette.mutedForeground,
     danger: palette.destructive,
     primaryBg: palette.primary,
     onPrimary: palette.primaryForeground,
-    onGold: mode === "dark" ? "#151A21" : palette.foreground,
+    onGold: mode === "dark" ? palette.primaryForeground : palette.foreground,
     onChip: palette.foreground,
     chipBg:
       mode === "dark"

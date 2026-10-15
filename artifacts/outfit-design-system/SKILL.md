@@ -10,8 +10,8 @@ shopping catalog.
 - The linked Figma file provides a single mobile home-screen composition; it has
   no reusable published component catalog or variable definitions available.
 - The exact base colors and interaction rules below come from the Outfit project
-  brief. The light theme preserves those values. The dark theme uses a
-  blue-gray gradient with muted blue ambient colors and antique-gold accents.
+  brief. The light theme preserves those values. The dark appearance uses a
+  neutral gray gradient with charcoal text, indigo-gray outlines, and gold accents.
 - The uploaded mirror-and-sparkle icon is the supplied brand mark. Keep it as an
   image; do not redraw or alter it.
 
@@ -29,17 +29,17 @@ shopping catalog.
 ## Color and background
 
 - Light background: vertical gradient from `#F4F1EA` to `#D3CCC5`.
-- Dark background: vertical gradient from `#222831` to `#11151B`, with ambient
-  blue-gray colors `#33445A` and `#3D4F6B`.
+- Dark background: vertical gradient from `#B2B2B2` to `#A0A0A0`, with subdued
+  gray and warm ambient colors. Use `#555779` for outlines and primary controls.
 - Light text: `#2E2D30` primary and `#5B5753` secondary; light accent:
   `#B19B63`. Light ambient blobs use sand `#E5D8C8` and gold `#D6C39C`.
-- Dark text: `#EDF0F5` primary and `#A9B1BD` secondary; dark accent:
-  `#D4BC86`.
+- Dark text: `#242530` primary and `#34364B` secondary; dark accent:
+  `#5F4D28`. Reserve `#F4F4F4` for text on dark controls and surfaces.
 - In the native app, place three soft radial color blobs in the lower half:
   approximately 320 pt, 80% center opacity fading to transparent at the edge.
   Reuse the two theme ambient colors at lower left, lower right, and mid-right.
-- Keep backgrounds warm and atmospheric. Do not replace the gradient and color
-  blobs with a flat white surface.
+- Keep backgrounds atmospheric. Do not flatten the gray gradient or remove its
+  ambient color blobs.
 
 ## Glass surfaces
 
@@ -56,7 +56,7 @@ The default remains clear and low-opacity so the warm background stays visible:
 4. Keep shadows outside the clipped glass. Reserve the subtle scheme-aware
    shadow for elevated controls such as the tab bar.
 
-Keep the warm background visible behind glass, especially in dark mode. Never
+Keep the scheme's background visible behind glass, especially in dark mode. Never
 animate the opacity of native glass. Hide it by moving it with `translateY`.
 
 ## Controls and layout
