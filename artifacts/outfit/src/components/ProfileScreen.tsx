@@ -78,13 +78,6 @@ interface ProfileForm {
 
 type SearchState = "idle" | "waiting" | "loading" | "success" | "error";
 
-interface RowColors {
-  textPrimary: string;
-  textSecondary: string;
-  fieldBorder: string;
-  fieldBg: string;
-}
-
 function emptyForm(): ProfileForm {
   return {
     name: "",
@@ -161,12 +154,13 @@ function ProfileInput({
   placeholder: string;
   accessibilityLabel: string;
   onChangeText: (value: string) => void;
-  colors: RowColors;
+  colors: ThemeColors;
   testID: string;
   autoCapitalize?: "none" | "words";
   keyboardType?: "number-pad";
   multiline?: boolean;
 }) {
+  const { isDark } = useTheme();
   return (
     <View>
       <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>
@@ -185,7 +179,9 @@ function ProfileInput({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.placeholder}
+          selectionColor={colors.gold}
+          keyboardAppearance={isDark ? "dark" : "light"}
           keyboardType={keyboardType}
           returnKeyType={keyboardType ? "done" : "default"}
           autoCapitalize={autoCapitalize}
@@ -692,7 +688,7 @@ export function ProfileScreen() {
                         numberOfLines={1}
                         style={[
                           styles.appearanceLabel,
-                          { color: colors.textPrimary },
+                          { color: colors.onChip },
                         ]}
                       >
                         {option.label}
@@ -903,7 +899,7 @@ export function ProfileScreen() {
                             <Text
                               style={[
                                 styles.helperText,
-                                { color: colors.destructive },
+                                { color: colors.danger },
                               ]}
                             >
                               No se pudo buscar. Inténtalo de nuevo.
@@ -1022,7 +1018,7 @@ export function ProfileScreen() {
                           accessibilityRole="alert"
                           style={[
                             styles.errorText,
-                            { color: colors.destructive },
+                            { color: colors.danger },
                           ]}
                         >
                           {message}
@@ -1035,7 +1031,7 @@ export function ProfileScreen() {
                         onPress={() => void saveProfileField()}
                         style={({ pressed }) => [
                           styles.primaryButton,
-                          { backgroundColor: colors.primary },
+                          { backgroundColor: colors.primaryBg },
                           isProfileSaveDisabled && styles.disabledButton,
                           pressed && !isProfileSaveDisabled && styles.pressed,
                         ]}
@@ -1043,7 +1039,7 @@ export function ProfileScreen() {
                         <Text
                           style={[
                             styles.primaryButtonText,
-                            { color: colors.primaryForeground },
+                            { color: colors.onPrimary },
                           ]}
                         >
                           {saving ? "Guardando…" : "Guardar"}
@@ -1095,7 +1091,7 @@ export function ProfileScreen() {
                           accessibilityRole="alert"
                           style={[
                             styles.errorText,
-                            { color: colors.destructive },
+                            { color: colors.danger },
                           ]}
                         >
                           {itemError}
@@ -1108,7 +1104,7 @@ export function ProfileScreen() {
                         onPress={() => void saveGarmentNote()}
                         style={({ pressed }) => [
                           styles.primaryButton,
-                          { backgroundColor: colors.primary },
+                          { backgroundColor: colors.primaryBg },
                           savingItem && styles.disabledButton,
                           pressed && !savingItem && styles.pressed,
                         ]}
@@ -1116,7 +1112,7 @@ export function ProfileScreen() {
                         <Text
                           style={[
                             styles.primaryButtonText,
-                            { color: colors.primaryForeground },
+                            { color: colors.onPrimary },
                           ]}
                         >
                           {savingItem ? "Guardando…" : "Guardar"}
@@ -1133,11 +1129,11 @@ export function ProfileScreen() {
                           savingItem && styles.disabledButton,
                         ]}
                       >
-                        <Trash2 size={16} color={colors.destructive} />
+                        <Trash2 size={16} color={colors.danger} />
                         <Text
                           style={[
                             styles.deleteButtonText,
-                            { color: colors.destructive },
+                            { color: colors.danger },
                           ]}
                         >
                           Eliminar prenda

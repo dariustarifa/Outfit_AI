@@ -22,7 +22,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "@workspace/outfit-design-system/components/native/glass-view";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
-import { useTheme } from "../theme";
+import { useTheme, type ThemeColors } from "../theme";
 import { useApp } from "../context/AppContext";
 import type { Profile, ProfileUpdate } from "../types";
 import { success } from "../haptics";
@@ -349,7 +349,7 @@ export function ProfileEditor() {
               </Text>
             ) : null}
             {searchState === "error" ? (
-              <Text style={[styles.searchMessage, { color: colors.destructive }]}>
+              <Text style={[styles.searchMessage, { color: colors.danger }]}>
                 No se pudo buscar. Inténtalo de nuevo.
               </Text>
             ) : null}
@@ -446,7 +446,7 @@ export function ProfileEditor() {
           <Text
             style={[
               styles.messageText,
-              { color: messageIsSuccess ? colors.textPrimary : colors.destructive },
+              { color: messageIsSuccess ? colors.textPrimary : colors.danger },
             ]}
           >
             {message}
@@ -462,13 +462,13 @@ export function ProfileEditor() {
         onPress={() => void saveChanges()}
         style={({ pressed }) => [
           styles.saveButton,
-          { backgroundColor: colors.primary },
+          { backgroundColor: colors.primaryBg },
           saving && styles.disabled,
           pressed && !saving && styles.pressed,
         ]}
       >
-        <Save size={18} color={colors.primaryForeground} />
-        <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>
+        <Save size={18} color={colors.onPrimary} />
+        <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>
           {saving ? "Guardando…" : "Guardar cambios"}
         </Text>
       </Pressable>
@@ -477,22 +477,13 @@ export function ProfileEditor() {
   );
 }
 
-interface FieldColors {
-  textPrimary: string;
-  textSecondary: string;
-  border: string;
-  card: string;
-  fieldBorder: string;
-  fieldBg: string;
-}
-
 interface ProfileFieldProps {
   label: string;
   value: string;
   placeholder: string;
   accessibilityLabel: string;
   onChangeText: (value: string) => void;
-  colors: FieldColors;
+  colors: ThemeColors;
   icon?: React.ReactNode;
   keyboardType?: "number-pad";
   returnKeyType?: "done" | "search";
@@ -511,6 +502,7 @@ function ProfileField({
   returnKeyType = "done",
   autoCapitalize = "none",
 }: ProfileFieldProps) {
+  const { isDark } = useTheme();
   return (
     <View>
       <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>
@@ -528,7 +520,9 @@ function ProfileField({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.placeholder}
+          selectionColor={colors.gold}
+          keyboardAppearance={isDark ? "dark" : "light"}
           keyboardType={keyboardType}
           returnKeyType={returnKeyType}
           autoCapitalize={autoCapitalize}
@@ -551,7 +545,7 @@ function PhotoButton({
   icon: React.ReactNode;
   testID: string;
   onPress: () => void;
-  colors: FieldColors;
+  colors: ThemeColors;
 }) {
   return (
     <Pressable

@@ -53,11 +53,11 @@ export default function IntroScreen() {
               onPress={startWardrobe}
               style={({ pressed }) => [
                 styles.button,
-                { backgroundColor: colors.textPrimary },
+                { backgroundColor: colors.primaryBg },
                 pressed ? styles.buttonPressed : null,
               ]}
             >
-              <Text style={[styles.buttonText, { color: colors.backgroundTop }]}>
+              <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
                 {starting ? "Abriendo…" : "Vamos"}
               </Text>
             </Pressable>

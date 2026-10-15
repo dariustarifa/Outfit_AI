@@ -30,7 +30,7 @@ import { searchWardrobeItems } from "@/src/wardrobe-search";
 import { selection, success } from "@/src/haptics";
 
 export default function WardrobeScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { source } = useLocalSearchParams<{ source?: string }>();
   const { wardrobe, loading, error, removeItem } = useApp();
@@ -140,9 +140,9 @@ export default function WardrobeScreen() {
               </GlassView>
             </Pressable>
             <View
-              style={[styles.editHint, { backgroundColor: colors.primary }]}
+              style={[styles.editHint, { backgroundColor: colors.primaryBg }]}
             >
-              <ArrowUpRight size={16} color={colors.primaryForeground} />
+              <ArrowUpRight size={16} color={colors.onPrimary} />
             </View>
           </View>
           <Text
@@ -158,7 +158,7 @@ export default function WardrobeScreen() {
       colors.foreground,
       colors.muted,
       colors.primary,
-      colors.primaryForeground,
+      colors.onPrimary,
       confirmRemove,
       openItem,
     ],
@@ -239,7 +239,9 @@ export default function WardrobeScreen() {
                     value={query}
                     onChangeText={setQuery}
                     placeholder="Buscar por nota"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.placeholder}
+                    selectionColor={colors.gold}
+                    keyboardAppearance={isDark ? "dark" : "light"}
                     returnKeyType="search"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -265,22 +267,22 @@ export default function WardrobeScreen() {
                 onPress={() => openItem()}
                 style={({ pressed }) => [
                   styles.addButton,
-                  { backgroundColor: colors.primary },
+                  { backgroundColor: colors.primaryBg },
                   pressed && styles.pressed,
                 ]}
               >
-                <Plus size={20} color={colors.primaryForeground} />
+                <Plus size={20} color={colors.onPrimary} />
                 <Text
                   style={[
                     styles.addButtonText,
-                    { color: colors.primaryForeground },
+                    { color: colors.onPrimary },
                   ]}
                 >
                   Añadir prenda
                 </Text>
               </Pressable>
               {error ? (
-                <Text style={[styles.errorText, { color: colors.destructive }]}>
+                <Text style={[styles.errorText, { color: colors.danger }]}>
                   No se pudieron cargar tus prendas guardadas.
                 </Text>
               ) : null}

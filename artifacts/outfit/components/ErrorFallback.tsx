@@ -95,7 +95,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primaryBg,
               shadowColor: colors.textPrimary,
               opacity: pressed ? 0.9 : 1,
               transform: [{ scale: pressed ? 0.97 : 1 }],
@@ -106,7 +106,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             style={[
               styles.buttonText,
               {
-                color: colors.primaryForeground,
+                color: colors.onPrimary,
                 fontFamily: 'Satoshi_500Medium',
               },
             ]}
@@ -123,7 +123,12 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           transparent={true}
           onRequestClose={() => setIsModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalOverlay,
+              { backgroundColor: colors.backdrop },
+            ]}
+          >
             <View
               style={[
                 styles.modalContainer,
@@ -255,7 +260,6 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContainer: {

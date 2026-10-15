@@ -17,11 +17,14 @@ import {
   useDesignColorScheme,
 } from "../../hooks/use-colors";
 import { useGlassEffectLevel } from "../../hooks/use-glass-effect";
-import { nativeEffects, nativeLayout } from "../../lib/native-theme";
+import { nativeEffects, nativeLayout, nativeTheme } from "../../lib/native-theme";
+
+type ColorScheme = "light" | "dark";
 
 export type GlassViewProps = {
   children: ReactNode;
   borderRadius?: number;
+  colorScheme?: ColorScheme;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 };
@@ -29,11 +32,17 @@ export type GlassViewProps = {
 export function GlassView({
   children,
   borderRadius = nativeLayout.cardRadius,
+  colorScheme: colorSchemeOverride,
   style,
   testID,
 }: GlassViewProps) {
-  const colors = useColors();
-  const colorScheme = useDesignColorScheme();
+  const sharedColors = useColors();
+  const sharedColorScheme = useDesignColorScheme();
+  const colorScheme = colorSchemeOverride ?? sharedColorScheme;
+  const colors =
+    colorScheme === sharedColorScheme
+      ? sharedColors
+      : nativeTheme[colorScheme];
   const isDark = colorScheme === "dark";
   const effectLevel = useGlassEffectLevel();
   const glass = nativeEffects.glass;
@@ -42,16 +51,20 @@ export function GlassView({
     glass.frostedBlurIntensity,
     effectLevel,
   );
-  const gradientStart = interpolateRgbaAlpha(
-    glass.liquidGradientStart,
-    glass.frostedGradientStart,
-    effectLevel,
-  );
-  const gradientEnd = interpolateRgbaAlpha(
-    glass.liquidGradientEnd,
-    glass.frostedGradientEnd,
-    effectLevel,
-  );
+  const gradientStart = isDark
+    ? glass.darkFallbackGradientStart
+    : interpolateRgbaAlpha(
+        glass.liquidGradientStart,
+        glass.frostedGradientStart,
+        effectLevel,
+      );
+  const gradientEnd = isDark
+    ? glass.darkFallbackGradientEnd
+    : interpolateRgbaAlpha(
+        glass.liquidGradientEnd,
+        glass.frostedGradientEnd,
+        effectLevel,
+      );
   if (Platform.OS === "ios" && isLiquidGlassAvailable()) {
     return (
       <NativeGlass
@@ -62,7 +75,7 @@ export function GlassView({
           animate: true,
           animationDuration: glass.transitionDurationSeconds,
         }}
-        colorScheme={isDark ? "dark" : "light"}
+        colorScheme={colorScheme}
         tintColor={rgbaFromHex(
           colors.backgroundTop,
           glass.nativeTintMaxOpacity * effectLevel,
@@ -96,6 +109,7 @@ export function GlassView({
         ]}
       >
         <BlurView
+          key={colorScheme}
           pointerEvents="none"
           intensity={blurIntensity}
           tint={isDark ? "dark" : "light"}
@@ -104,8 +118,8 @@ export function GlassView({
         <LinearGradient
           pointerEvents="none"
           colors={[
-            isDark ? halfAlpha(gradientStart) : gradientStart,
-            isDark ? halfAlpha(gradientEnd) : gradientEnd,
+            gradientStart,
+            gradientEnd,
           ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}

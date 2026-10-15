@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo } from "react";
 import {
-  Animated,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -27,63 +26,17 @@ export function GradientBackground({
   const { width, height } = useWindowDimensions();
   const blobRadius = nativeEffects.ambient.diameter / 2;
   const viewBox = useMemo(() => `0 0 ${width} ${height}`, [width, height]);
-  const transition = useRef(new Animated.Value(1)).current;
-  const currentColors = useRef(colors);
-  const [layers, setLayers] = useState({ from: colors, to: colors });
-
-  useEffect(() => {
-    if (currentColors.current === colors) return;
-    currentColors.current = colors;
-    setLayers((current) => ({ from: current.to, to: colors }));
-    transition.setValue(0);
-    const animation = Animated.timing(transition, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    });
-    animation.start(({ finished }) => {
-      if (finished) setLayers({ from: colors, to: colors });
-    });
-    return () => animation.stop();
-  }, [colors, transition]);
-
-  const fromOpacity = transition.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0],
-  });
-  const toOpacity = transition.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
 
   return (
     <View style={[styles.container, style]}>
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { opacity: fromOpacity }]}
-      >
-        <BackgroundLayer
-          colors={layers.from}
-          width={width}
-          height={height}
-          viewBox={viewBox}
-          blobRadius={blobRadius}
-          idPrefix={`${instanceId}-previous`}
-        />
-      </Animated.View>
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { opacity: toOpacity }]}
-      >
-        <BackgroundLayer
-          colors={layers.to}
-          width={width}
-          height={height}
-          viewBox={viewBox}
-          blobRadius={blobRadius}
-          idPrefix={`${instanceId}-current`}
-        />
-      </Animated.View>
+      <BackgroundLayer
+        colors={colors}
+        width={width}
+        height={height}
+        viewBox={viewBox}
+        blobRadius={blobRadius}
+        idPrefix={instanceId}
+      />
       <View pointerEvents="box-none" style={styles.content}>
         {children}
       </View>
@@ -110,7 +63,7 @@ function BackgroundLayer({
     <>
       <LinearGradient
         pointerEvents="none"
-        colors={[colors.backgroundTop, colors.backgroundBottom]}
+        colors={[colors.bgTop, colors.bgBottom]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={[StyleSheet.absoluteFill, styles.backgroundLayer]}
@@ -123,48 +76,40 @@ function BackgroundLayer({
         style={[StyleSheet.absoluteFill, styles.backgroundLayer]}
       >
         <Defs>
-          <RadialGradient id={`${idPrefix}-sand`} cx="50%" cy="50%" r="50%">
+          <RadialGradient id={`${idPrefix}-a`} cx="50%" cy="50%" r="50%">
             <Stop
               offset="0%"
-              stopColor={colors.blobSand}
+              stopColor={colors.blobA}
               stopOpacity={nativeEffects.ambient.centerOpacity}
             />
-            <Stop offset="100%" stopColor={colors.blobSand} stopOpacity="0" />
+            <Stop offset="100%" stopColor={colors.blobA} stopOpacity="0" />
           </RadialGradient>
-          <RadialGradient id={`${idPrefix}-gold`} cx="50%" cy="50%" r="50%">
+          <RadialGradient id={`${idPrefix}-b`} cx="50%" cy="50%" r="50%">
             <Stop
               offset="0%"
-              stopColor={colors.blobGold}
+              stopColor={colors.blobB}
               stopOpacity={nativeEffects.ambient.centerOpacity}
             />
-            <Stop offset="100%" stopColor={colors.blobGold} stopOpacity="0" />
-          </RadialGradient>
-          <RadialGradient id={`${idPrefix}-sage`} cx="50%" cy="50%" r="50%">
-            <Stop
-              offset="0%"
-              stopColor={colors.blobSage}
-              stopOpacity={nativeEffects.ambient.centerOpacity}
-            />
-            <Stop offset="100%" stopColor={colors.blobSage} stopOpacity="0" />
+            <Stop offset="100%" stopColor={colors.blobB} stopOpacity="0" />
           </RadialGradient>
         </Defs>
         <Circle
           cx={width * 0.2}
           cy={height * 0.84}
           r={blobRadius}
-          fill={`url(#${idPrefix}-sand)`}
+          fill={`url(#${idPrefix}-a)`}
         />
         <Circle
           cx={width * 0.82}
           cy={height * 0.84}
           r={blobRadius}
-          fill={`url(#${idPrefix}-gold)`}
+          fill={`url(#${idPrefix}-b)`}
         />
         <Circle
           cx={width * 0.78}
           cy={height * 0.66}
           r={blobRadius}
-          fill={`url(#${idPrefix}-sage)`}
+          fill={`url(#${idPrefix}-a)`}
         />
       </Svg>
     </>

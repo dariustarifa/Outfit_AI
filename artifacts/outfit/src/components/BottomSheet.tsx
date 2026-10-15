@@ -199,6 +199,7 @@ export function BottomSheet({
         style={[
           StyleSheet.absoluteFill,
           styles.backdrop,
+          { backgroundColor: colors.backdrop },
           backdropAnimatedStyle,
         ]}
       >
@@ -250,7 +251,6 @@ const styles = StyleSheet.create({
     elevation: 100,
   },
   backdrop: {
-    backgroundColor: "rgba(0,0,0,0.18)",
   },
   sheet: {
     position: "absolute",

@@ -29,7 +29,7 @@ import { useApp } from "@/src/context/AppContext";
 import { selection, success } from "@/src/haptics";
 
 export default function WardrobeItemScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { wardrobe, loading, addItem, updateItem, removeItem } = useApp();
@@ -340,7 +340,9 @@ export default function WardrobeItemScreen() {
               value={note}
               onChangeText={setNote}
               placeholder="Ej. Camisa blanca de lino"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.placeholder}
+              selectionColor={colors.gold}
+              keyboardAppearance={isDark ? "dark" : "light"}
               maxLength={160}
               multiline
               textAlignVertical="top"
@@ -358,7 +360,7 @@ export default function WardrobeItemScreen() {
             </Text>
 
             {message ? (
-              <Text accessibilityRole="alert" style={[styles.errorText, { color: colors.destructive }]}>
+              <Text accessibilityRole="alert" style={[styles.errorText, { color: colors.danger }]}>
                 {message}
               </Text>
             ) : null}
@@ -370,17 +372,17 @@ export default function WardrobeItemScreen() {
               onPress={() => void save()}
               style={({ pressed }) => [
                 styles.saveButton,
-                { backgroundColor: colors.primary },
+                { backgroundColor: colors.primaryBg },
                 (!photoUri || saving) && styles.disabledButton,
                 pressed && photoUri && !saving && styles.pressed,
               ]}
             >
               {saving ? (
-                <ActivityIndicator color={colors.primaryForeground} />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Save size={18} color={colors.primaryForeground} />
+                <Save size={18} color={colors.onPrimary} />
               )}
-              <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>
+              <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>
                 {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar prenda"}
               </Text>
             </Pressable>
@@ -395,8 +397,8 @@ export default function WardrobeItemScreen() {
                 }}
                 style={styles.removeButton}
               >
-                <Trash2 size={16} color={colors.destructive} />
-                <Text style={[styles.removeButtonText, { color: colors.destructive }]}>
+                <Trash2 size={16} color={colors.danger} />
+                <Text style={[styles.removeButtonText, { color: colors.danger }]}>
                   Eliminar prenda
                 </Text>
               </Pressable>
@@ -500,24 +502,24 @@ function CameraCaptureModal({
               hitSlop={10}
               style={styles.cameraClose}
             >
-              <X size={22} color={colors.textPrimary} />
+              <X size={22} color={colors.cameraForeground} />
             </Pressable>
-            <Text style={[styles.cameraTitle, { color: colors.textPrimary }]}>
+            <Text style={[styles.cameraTitle, { color: colors.cameraForeground }]}>
               Fotografía la prenda
             </Text>
             <View style={styles.topBarSpacer} />
           </View>
           {!permission ? (
             <View style={styles.permissionState}>
-              <ActivityIndicator color={colors.primary} />
+              <ActivityIndicator color={colors.cameraForeground} />
             </View>
           ) : !permission.granted ? (
             <View style={styles.permissionState}>
-              <Camera size={34} color={colors.textSecondary} />
-              <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>
+              <Camera size={34} color={colors.cameraForeground} />
+              <Text style={[styles.permissionTitle, { color: colors.cameraForeground }]}>
                 Permite usar la cámara
               </Text>
-              <Text style={[styles.permissionCopy, { color: colors.textSecondary }]}>
+              <Text style={[styles.permissionCopy, { color: colors.cameraForeground }]}>
                 Necesitamos acceso a la cámara para fotografiar tu prenda.
               </Text>
               {permission.status === "denied" && !permission.canAskAgain ? (
@@ -525,9 +527,9 @@ function CameraCaptureModal({
                   accessibilityRole="button"
                   testID="item-camera-settings"
                   onPress={() => void openCameraSettings()}
-                  style={[styles.permissionButton, { backgroundColor: colors.primary }]}
+                  style={[styles.permissionButton, { backgroundColor: colors.cameraActionBg }]}
                 >
-                  <Text style={[styles.permissionButtonText, { color: colors.primaryForeground }]}>
+                  <Text style={[styles.permissionButtonText, { color: colors.cameraActionText }]}>
                     Abrir ajustes
                   </Text>
                 </Pressable>
@@ -541,15 +543,15 @@ function CameraCaptureModal({
                       setCameraError("No se pudo solicitar acceso a la cámara.");
                     });
                   }}
-                  style={[styles.permissionButton, { backgroundColor: colors.primary }]}
+                  style={[styles.permissionButton, { backgroundColor: colors.cameraActionBg }]}
                 >
-                  <Text style={[styles.permissionButtonText, { color: colors.primaryForeground }]}>
+                  <Text style={[styles.permissionButtonText, { color: colors.cameraActionText }]}>
                     Permitir cámara
                   </Text>
                 </Pressable>
               )}
               {cameraError ? (
-                <Text style={[styles.cameraError, { color: colors.destructive }]}>
+                <Text style={[styles.cameraError, { color: colors.cameraForeground }]}>
                   {cameraError}
                 </Text>
               ) : null}
@@ -569,7 +571,7 @@ function CameraCaptureModal({
                 <View pointerEvents="none" style={styles.cameraGuide} />
               </View>
               {cameraError ? (
-                <Text style={[styles.cameraError, { color: colors.destructive }]}>
+                <Text style={[styles.cameraError, { color: colors.cameraForeground }]}>
                   {cameraError}
                 </Text>
               ) : null}
@@ -582,12 +584,12 @@ function CameraCaptureModal({
                   onPress={() => void takePhoto()}
                   style={({ pressed }) => [
                     styles.shutterOuter,
-                    { borderColor: colors.primary },
+                    { borderColor: colors.cameraForeground },
                     pressed && styles.pressed,
                     takingPhoto && styles.disabledButton,
                   ]}
                 >
-                  <View style={[styles.shutterInner, { backgroundColor: colors.primary }]} />
+                  <View style={[styles.shutterInner, { backgroundColor: colors.cameraForeground }]} />
                 </Pressable>
               </View>
             </>

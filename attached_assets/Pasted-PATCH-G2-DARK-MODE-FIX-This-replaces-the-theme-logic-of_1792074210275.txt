@@ -1,0 +1,89 @@
+PATCH G2 — DARK MODE FIX. This replaces the theme logic of Patch G. Do only this patch. Do not change layout, texts, animation timing or features.
+
+SYMPTOMS TO FIX
+1. In dark mode the icon/chip backgrounds come out dark while the text and icons are light, and the result is unreadable and inconsistent.
+2. The "Automático" option does not follow the iPhone appearance.
+Probable causes: old static colors still used in places, hard-coded colors, views that do not read the theme, the native layer still forced to light, and background and text colors that are not designed as pairs.
+
+STEP 0 — AUDIT (do this first)
+Search the whole project and write the results in NOTES.md under "Theme audit":
+ a) every hard-coded color outside theme.ts: hex values, rgb()/rgba(), and the strings "white", "black", "#fff", "#000";
+ b) every file that still imports static color objects instead of using useTheme();
+ c) every place that touches Appearance, useColorScheme, StatusBar or userInterfaceStyle.
+Then fix ALL of them in the steps below. Allowed to stay hard-coded: rgba(0,0,0,x) shadows, and the camera screen (see Step 3).
+
+STEP 1 — ONE SOURCE OF TRUTH FOR THE SCHEME (src/theme/ThemeProvider.tsx)
+- mode is "light" | "dark" | "system", saved in AsyncStorage (key "themeMode"), default "system". Load it before rendering any screen.
+- Compute the scheme in ONE place only:
+    const systemScheme = useColorScheme();   // from react-native
+    const scheme = mode === "system" ? (systemScheme ?? "light") : mode;
+- useEffect on [mode]: Appearance.setColorScheme(mode === "system" ? null : mode).
+- useTheme() returns { colors, scheme, isDark, mode, setMode }. NO component may read the system scheme directly. Everything uses useTheme().
+- Add in dev only: console.log("[theme]", { mode, systemScheme, scheme }) every time any of them changes.
+- Config: in app.json set expo.userInterfaceStyle to "automatic". Also search for expo.ios.userInterfaceStyle and for app.config.js/ts: if they set "light", remove or change them to "automatic". Write in your reply that I must restart with "npx expo start --clear" and fully close and reopen Expo Go.
+- StatusBar: style = isDark ? "light" : "dark" (explicit, not "auto").
+- Remove the 250 ms background cross-fade from Patch G. The switch is instant, so colors can never be half-changed.
+
+STEP 2 — SEMANTIC COLOR TOKENS, ALWAYS IN PAIRS (use exactly these values)
+Token            LIGHT                     DARK
+bgTop            #F4F1EA                   #2B2826
+bgBottom         #D3CCC5                   #1B1917
+blobA            #E5D8C8                   #4A3D31
+blobB            #D6C39C                   #5E4B2C
+text             #2E2D30                   #F4F1EA
+textMuted        #6E6A65                   #B3ADA4
+gold             #B19B63                   #D4BC86
+iconInactive     #6E6A65                   #B3ADA4
+glassBorder      rgba(255,255,255,0.75)    rgba(255,255,255,0.22)
+chipBg           (the current WhiteChip)   rgba(255,255,255,0.16)
+chipBorder       (the current WhiteChip)   rgba(255,255,255,0.30)
+onChip           #2E2D30                   #F4F1EA
+fieldBg          rgba(255,255,255,0.50)    rgba(255,255,255,0.08)
+fieldBorder      rgba(255,255,255,0.70)    rgba(255,255,255,0.18)
+placeholder      #8A857E                   #8F8981
+primaryBg        #2E2D30                   #F4F1EA
+onPrimary        #F4F1EA                   #1E1C1A
+onGold           #2E2D30                   #1E1C1A
+danger           #A33A3A                   #E57373
+backdrop         rgba(0,0,0,0.12)          rgba(0,0,0,0.45)
+Rule: every background token has a matching "on" token. Never put a light text on a light surface or a dark text on a dark surface. The "chipBg" in dark mode is LIGHTER than the screen behind it (a light translucent capsule), never darker.
+
+STEP 3 — COMPONENT RULES (apply to every screen and component)
+- WhiteChip (paperclip button, active tab marker, selected segmented option, toast): background chipBg, border chipBorder. Every Text/Icon inside uses onChip, except the active tab icon, which uses gold.
+- Text on the screen background or on glass: text (main) or textMuted (secondary). Icons: text, iconInactive or gold. Always pass the "color" prop to every lucide icon from a token; never rely on a default.
+- Primary button: primaryBg + onPrimary. Send button (gold circle): gold + onGold.
+- TextInput: color = text, placeholderTextColor = placeholder, selectionColor = gold, keyboardAppearance = isDark ? "dark" : "light". Field background = fieldBg, border = fieldBorder.
+- Native controls follow tokens too: Switch (trackColor, thumbColor), Slider (gold), ActivityIndicator, RefreshControl.
+- Bottom sheet backdrop = backdrop. The "Eliminar" text uses danger.
+- GradientBackground: gradient from bgTop to bgBottom, blobs use blobA and blobB, all from useTheme().
+- Camera screen: it stays dark in both modes. Inside it only, use fixed values: white text and icons on dark glass. It must not use light-mode tokens.
+- No component may use a color that is not a token.
+
+STEP 4 — GLASS IN BOTH MODES (src/components/GlassView.tsx)
+- Fallback BlurView: tint = isDark ? "dark" : "light". Add key={scheme} to the BlurView.
+- Fallback overlay: light mode stays as it is. Dark mode: gradient from rgba(255,255,255,0.10) (top-left) to rgba(255,255,255,0.02) (bottom-right). Border = glassBorder.
+- NativeGlass (iOS 26): if the installed expo-glass-effect version has a colorScheme prop, pass colorScheme={scheme}. If it does not, rely on Appearance.setColorScheme from Step 1.
+- Text over glass always uses the "text" token, so it contrasts with the glass in both modes.
+
+STEP 5 — APPEARANCE CONTROL (Profile)
+- The segmented control "Claro | Oscuro | Automático" stays. Selected option: WhiteChip background and onChip text. Unselected options: text color "textMuted". It must be readable in both modes.
+- On tap: selection() haptic, then setMode.
+
+STEP 6 — CONTRAST CHECK (src/theme/contrast.ts)
+- Write a small function that computes the WCAG contrast ratio between two colors. For semi-transparent colors, first composite them over bgBottom of the same palette.
+- Run it ONLY when __DEV__ is true, once at startup, for BOTH palettes. console.warn every failing pair.
+- Pairs that must be >= 4.5: text on bgTop, text on bgBottom, textMuted on bgTop, textMuted on bgBottom, onChip on chipBg, onPrimary on primaryBg, onGold on gold, text on fieldBg, placeholder on fieldBg.
+- Pairs that must be >= 3: iconInactive on bgBottom, danger on bgBottom.
+- Info only (just print the number, do not change anything): gold on bgBottom.
+- If a required pair fails, adjust ONLY the lightness of the failing color slightly (keep the hue), and tell me which values you changed.
+
+STEP 7 — VERIFY BEFORE REPLYING
+ a) Search again: no hard-coded colors remain outside theme.ts and the camera screen.
+ b) The contrast check prints no warnings.
+ c) Go through each of these in light AND dark mode and confirm that every text, icon and background is readable: home, plan button, plan panel open, tab bar with the active marker on Home and on Profile, profile (all sections), bottom sheets, onboarding profile, gender, intro, wardrobe preview, recommendation, toast.
+
+DONE WHEN
+- With mode "Oscuro", the whole app is dark, with light text, and the icon/chip backgrounds are lighter than their surroundings.
+- With mode "Claro", it looks like my original design.
+- With mode "Automático", when I change the iPhone appearance (Control Center), the app changes immediately without restarting.
+Reply with: files changed, the number of hard-coded colors replaced, the contrast check output, and the list of screens verified.

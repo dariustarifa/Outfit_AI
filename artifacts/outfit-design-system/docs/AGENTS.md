@@ -20,7 +20,7 @@ on it and import its theme and components directly.
 - `src/lib/` (`cn`) and `src/hooks/` — exported as `./lib/*` and `./hooks/*`.
 - `src/lib/native-theme.tsx`, `src/hooks/use-colors.tsx`,
   `src/hooks/use-glass-effect.tsx`, and `src/components/native/` — portable
-  native theme, shared color-scheme and glass-intensity hooks, and Expo-ready
+  native theme, explicit shared color-scheme and glass-intensity hooks, and Expo-ready
   background/glass primitives. Glass uses Liquid Glass on supported iOS
   versions and an adjustable blur fallback elsewhere. Expo consumers import
   these directly; keep only domain state and compositions in the app.
@@ -154,6 +154,9 @@ the import resolves and the primitive uses this design system's theme.
 - For Expo, import `nativeTheme`, `useColors`, `GradientBackground`, and
   `GlassView` from this package. App-local theme files may only re-export those
   APIs; never create a second palette or component implementation.
+- Resolve system appearance in the app's ThemeProvider, then set the shared
+  color-scheme override to the resolved light/dark scheme before rendering
+  screens. Design-system components must not read system appearance directly.
 - Keep product data, navigation, application state, and product-specific
   compositions in the app. Product-agnostic visual primitives belong here.
 - Read these docs in place. Do not copy them into another artifact.

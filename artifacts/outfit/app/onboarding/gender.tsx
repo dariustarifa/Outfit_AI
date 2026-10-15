@@ -78,7 +78,7 @@ export default function GenderOnboardingScreen() {
           ))}
         </View>
         {error ? (
-          <Text accessibilityRole="alert" style={[styles.error, { color: colors.destructive }]}>
+          <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>
             {error}
           </Text>
         ) : null}
@@ -95,12 +95,12 @@ export default function GenderOnboardingScreen() {
           onPress={() => void continueToNextScreen()}
           style={({ pressed }) => [
             styles.primaryButton,
-            { backgroundColor: colors.primary },
+            { backgroundColor: colors.primaryBg },
             (!selectedGender || saving) && styles.disabledButton,
             pressed && selectedGender && !saving && styles.pressed,
           ]}
         >
-          <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>
+          <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>
             {saving ? "Guardando…" : "Continuar"}
           </Text>
         </Pressable>

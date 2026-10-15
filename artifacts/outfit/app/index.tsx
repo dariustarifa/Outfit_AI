@@ -342,12 +342,12 @@ export default function HomeScreen() {
                           onPress={addFirstItem}
                           style={({ pressed }) => [
                             styles.primaryAction,
-                            { backgroundColor: colors.primary },
+                            { backgroundColor: colors.primaryBg },
                             pressed && styles.pressed,
                           ]}
                         >
-                          <Plus size={18} color={colors.primaryForeground} strokeWidth={2} />
-                          <Text style={[styles.primaryActionText, { color: colors.primaryForeground }]}>
+                          <Plus size={18} color={colors.onPrimary} strokeWidth={2} />
+                          <Text style={[styles.primaryActionText, { color: colors.onPrimary }]}>
                             Añadir primera prenda
                           </Text>
                         </Pressable>

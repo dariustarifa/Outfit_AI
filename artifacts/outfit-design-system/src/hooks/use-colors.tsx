@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { useColorScheme } from "react-native";
 import { nativeTheme } from "../lib/native-theme";
 
 type ColorScheme = "light" | "dark";
@@ -22,13 +21,9 @@ export function setColorSchemeOverride(scheme: ColorScheme | null) {
   listeners.forEach((listener) => listener());
 }
 
-export function useDesignColorScheme(): ColorScheme | null {
-  const systemScheme = useColorScheme();
+export function useDesignColorScheme(): ColorScheme {
   const override = useSyncExternalStore(subscribe, getOverride, () => undefined);
-  const selectedScheme = override ?? systemScheme;
-  return selectedScheme === "dark" || selectedScheme === "light"
-    ? selectedScheme
-    : null;
+  return override ?? "light";
 }
 
 export function useColors() {

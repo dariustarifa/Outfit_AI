@@ -81,7 +81,7 @@ function makeAttachment(
 }
 
 export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const pathname = usePathname();
@@ -381,7 +381,12 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View
         pointerEvents={expanded ? "auto" : "none"}
-        style={[StyleSheet.absoluteFill, styles.dim, backdropStyle]}
+        style={[
+          StyleSheet.absoluteFill,
+          styles.dim,
+          { backgroundColor: colors.backdrop },
+          backdropStyle,
+        ]}
       >
         <Pressable
           accessibilityRole="button"
@@ -476,7 +481,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                             { backgroundColor: colors.textPrimary },
                           ]}
                         >
-                          <X size={12} color={colors.background} strokeWidth={2} />
+                          <X size={12} color={colors.onPrimary} strokeWidth={2} />
                         </Pressable>
                       </View>
                     ))}
@@ -497,7 +502,9 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                     );
                   }}
                   placeholder="Escribe tu petición…"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.placeholder}
+                  selectionColor={colors.gold}
+                  keyboardAppearance={isDark ? "dark" : "light"}
                   multiline
                   scrollEnabled
                   textAlignVertical="top"
@@ -522,7 +529,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                     <WhiteChip style={styles.attachButton}>
                       <Paperclip
                         size={22}
-                        color={colors.textSecondary}
+                        color={colors.onChip}
                         strokeWidth={1.7}
                       />
                     </WhiteChip>
@@ -538,7 +545,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                       { backgroundColor: colors.gold, opacity: canSend ? 1 : 0.4 },
                     ]}
                   >
-                    <ArrowUp size={22} color={colors.background} strokeWidth={2} />
+                    <ArrowUp size={22} color={colors.onGold} strokeWidth={2} />
                   </Pressable>
                 </View>
               </View>
@@ -650,7 +657,6 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
 const styles = StyleSheet.create({
   dim: {
     zIndex: 1,
-    backgroundColor: "rgba(0,0,0,0.10)",
   },
   footer: {
     position: "absolute",

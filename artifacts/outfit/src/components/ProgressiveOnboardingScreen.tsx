@@ -693,7 +693,7 @@ export default function ProgressiveOnboardingScreen() {
                     <Text
                       style={[
                         styles.searchMessage,
-                        { color: colors.destructive },
+                        { color: colors.danger },
                       ]}
                     >
                       No se pudo buscar. Inténtalo de nuevo.
@@ -766,7 +766,7 @@ export default function ProgressiveOnboardingScreen() {
                       ]}
                     >
                       {form.photoConsent ? (
-                        <Check size={15} color={colors.primaryForeground} />
+                        <Check size={15} color={colors.onPrimary} />
                       ) : null}
                     </View>
                     <Text
@@ -898,7 +898,7 @@ export default function ProgressiveOnboardingScreen() {
           {message ? (
             <Text
               accessibilityRole="alert"
-              style={[styles.message, { color: colors.destructive }]}
+              style={[styles.message, { color: colors.danger }]}
             >
               {message}
             </Text>
@@ -906,7 +906,7 @@ export default function ProgressiveOnboardingScreen() {
           {draftSaveError ? (
             <Text
               accessibilityRole="alert"
-              style={[styles.message, { color: colors.destructive }]}
+              style={[styles.message, { color: colors.danger }]}
             >
               {draftSaveError}
             </Text>
@@ -931,7 +931,7 @@ export default function ProgressiveOnboardingScreen() {
               onPress={() => void saveStep()}
               style={({ pressed }) => [
                 styles.primaryButton,
-                { backgroundColor: colors.primary },
+                { backgroundColor: colors.primaryBg },
                 !canAdvance && styles.disabledButton,
                 pressed && canAdvance && styles.pressed,
               ]}
@@ -939,7 +939,7 @@ export default function ProgressiveOnboardingScreen() {
               <Text
                 style={[
                   styles.primaryButtonText,
-                  { color: colors.primaryForeground },
+                  { color: colors.onPrimary },
                 ]}
               >
                 {saving
@@ -949,7 +949,7 @@ export default function ProgressiveOnboardingScreen() {
                     : "Continuar"}
               </Text>
               {step < STEP_COUNT - 1 ? (
-                <ArrowRight size={18} color={colors.primaryForeground} />
+                <ArrowRight size={18} color={colors.onPrimary} />
               ) : null}
             </Pressable>
           </View>
@@ -984,6 +984,7 @@ function FormField({
   returnKeyType,
   autoCapitalize = "none",
 }: FormFieldProps) {
+  const { isDark } = useTheme();
   return (
     <View>
       <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>
@@ -1001,7 +1002,9 @@ function FormField({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.placeholder}
+          selectionColor={colors.gold}
+          keyboardAppearance={isDark ? "dark" : "light"}
           keyboardType={keyboardType}
           returnKeyType={returnKeyType}
           autoCapitalize={autoCapitalize}

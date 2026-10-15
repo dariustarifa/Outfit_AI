@@ -46,7 +46,7 @@ const WEB_SAFE_BOTTOM = 34;
 const screenHeight = Dimensions.get("screen").height;
 
 export default function WardrobeOnboardingScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromPlus = from === "plus";
@@ -412,7 +412,9 @@ export default function WardrobeOnboardingScreen() {
                   value={note}
                   onChangeText={setNote}
                   placeholder="¿Qué prenda es? ¿Te queda grande, ajustada…?"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.placeholder}
+                  selectionColor={colors.gold}
+                  keyboardAppearance={isDark ? "dark" : "light"}
                   maxLength={160}
                   multiline
                   textAlignVertical="top"
@@ -448,7 +450,7 @@ export default function WardrobeOnboardingScreen() {
               {error ? (
                 <Text
                   accessibilityRole="alert"
-                  style={[styles.errorText, { color: colors.destructive }]}
+                  style={[styles.errorText, { color: colors.danger }]}
                 >
                   {error}
                 </Text>
@@ -492,20 +494,20 @@ export default function WardrobeOnboardingScreen() {
                   style={({ pressed }) => [
                     styles.previewAction,
                     styles.primaryAction,
-                    { backgroundColor: colors.primary },
+                    { backgroundColor: colors.primaryBg },
                     savingPhoto && styles.disabledButton,
                     pressed && !savingPhoto && styles.pressed,
                   ]}
                 >
                   {savingPhoto ? (
-                    <ActivityIndicator color={colors.primaryForeground} />
+                    <ActivityIndicator color={colors.onPrimary} />
                   ) : (
-                    <Plus size={17} color={colors.primaryForeground} />
+                    <Plus size={17} color={colors.onPrimary} />
                   )}
                   <Text
                     style={[
                       styles.previewActionText,
-                      { color: colors.primaryForeground },
+                      { color: colors.onPrimary },
                     ]}
                   >
                     {savingPhoto ? "Guardando…" : "Guardar y añadir otra"}
@@ -551,12 +553,13 @@ export default function WardrobeOnboardingScreen() {
           <View style={styles.cameraTopBar}>
             <GlassView
               borderRadius={nativeLayout.pillRadius}
+              colorScheme="dark"
               style={[
                 styles.countChip,
-                { borderColor: colors.glassBorder },
+                { borderColor: colors.cameraGlassBorder },
               ]}
             >
-              <Text style={[styles.countText, { color: colors.textPrimary }]}>
+              <Text style={[styles.countText, { color: colors.cameraForeground }]}>
                 {countLabel}
               </Text>
             </GlassView>
@@ -573,13 +576,14 @@ export default function WardrobeOnboardingScreen() {
               >
                 <GlassView
                   borderRadius={nativeLayout.pillRadius}
+                  colorScheme="dark"
                   style={[
                     styles.confirmChip,
-                    { borderColor: colors.glassBorder },
+                    { borderColor: colors.cameraGlassBorder },
                   ]}
                 >
                   <Text
-                    style={[styles.confirmText, { color: colors.textPrimary }]}
+                    style={[styles.confirmText, { color: colors.cameraForeground }]}
                   >
                     {confirming
                       ? "Guardando…"
@@ -598,14 +602,14 @@ export default function WardrobeOnboardingScreen() {
             {!cameraGranted ? (
               <View style={styles.permissionState}>
                 {cameraPermission ? (
-                  <Camera size={30} color={colors.textSecondary} />
+                  <Camera size={30} color={colors.cameraForeground} />
                 ) : (
-                  <ActivityIndicator color={colors.primary} />
+                  <ActivityIndicator color={colors.cameraForeground} />
                 )}
                 <Text
                   style={[
                     styles.permissionTitle,
-                    { color: colors.textPrimary },
+                    { color: colors.cameraForeground },
                   ]}
                 >
                   Necesitamos acceso a la cámara
@@ -613,7 +617,7 @@ export default function WardrobeOnboardingScreen() {
                 <Text
                   style={[
                     styles.permissionCopy,
-                    { color: colors.textSecondary },
+                    { color: colors.cameraForeground },
                   ]}
                 >
                   También puedes añadir varias prendas desde tu galería.
@@ -622,13 +626,14 @@ export default function WardrobeOnboardingScreen() {
                   <Animated.View style={toastAnimatedStyle}>
                     <GlassView
                       borderRadius={nativeLayout.pillRadius}
+                      colorScheme="dark"
                       style={[styles.notice, styles.permissionToast]}
                     >
                       <Text
                         accessibilityLiveRegion="polite"
                         style={[
                           styles.noticeText,
-                          { color: colors.textPrimary },
+                          { color: colors.cameraForeground },
                         ]}
                       >
                         {toast}
@@ -641,7 +646,7 @@ export default function WardrobeOnboardingScreen() {
                     accessibilityRole="alert"
                     style={[
                       styles.permissionError,
-                      { color: colors.destructive },
+                      { color: colors.cameraForeground },
                     ]}
                   >
                     {error}
@@ -654,16 +659,16 @@ export default function WardrobeOnboardingScreen() {
                   onPress={() => void chooseFromGallery(false)}
                   style={({ pressed }) => [
                     styles.permissionButton,
-                    { backgroundColor: colors.primary },
+                    { backgroundColor: colors.cameraActionBg },
                     gallerySaving && styles.disabledButton,
                     pressed && !gallerySaving && styles.pressed,
                   ]}
                 >
-                  <ImagePlus size={18} color={colors.primaryForeground} />
+                  <ImagePlus size={18} color={colors.cameraActionText} />
                   <Text
                     style={[
                       styles.permissionButtonText,
-                      { color: colors.primaryForeground },
+                      { color: colors.cameraActionText },
                     ]}
                   >
                     {gallerySaving ? "Abriendo…" : "Elegir una foto"}
@@ -681,11 +686,11 @@ export default function WardrobeOnboardingScreen() {
                     pressed && !gallerySaving && styles.pressed,
                   ]}
                 >
-                  <Plus size={16} color={colors.primary} />
+                  <Plus size={16} color={colors.cameraForeground} />
                   <Text
                     style={[
                       styles.permissionSecondaryText,
-                      { color: colors.primary },
+                      { color: colors.cameraForeground },
                     ]}
                   >
                     Añadir varias fotos
@@ -698,11 +703,11 @@ export default function WardrobeOnboardingScreen() {
                     onPress={openCameraSettings}
                     style={styles.permissionSecondary}
                   >
-                    <Settings size={16} color={colors.primary} />
+                    <Settings size={16} color={colors.cameraForeground} />
                     <Text
                       style={[
                         styles.permissionSecondaryText,
-                        { color: colors.primary },
+                        { color: colors.cameraForeground },
                       ]}
                     >
                       Abrir ajustes de cámara
@@ -718,7 +723,7 @@ export default function WardrobeOnboardingScreen() {
                     <Text
                       style={[
                         styles.permissionSecondaryText,
-                        { color: colors.primary },
+                        { color: colors.cameraForeground },
                       ]}
                     >
                       Permitir cámara
@@ -731,19 +736,20 @@ export default function WardrobeOnboardingScreen() {
                 <View style={styles.cameraMessages}>
                   {!cameraReady && !error && !gallerySaving ? (
                     <View style={styles.cameraLoading}>
-                      <ActivityIndicator color={colors.primaryForeground} />
+                      <ActivityIndicator color={colors.cameraForeground} />
                     </View>
                   ) : null}
                   {gallerySaving && galleryProgress ? (
                     <GlassView
                       borderRadius={nativeLayout.pillRadius}
+                      colorScheme="dark"
                       style={styles.notice}
                     >
-                      <ActivityIndicator color={colors.primary} size="small" />
+                      <ActivityIndicator color={colors.cameraForeground} size="small" />
                       <Text
                         style={[
                           styles.noticeText,
-                          { color: colors.textPrimary },
+                          { color: colors.cameraForeground },
                         ]}
                       >
                         Guardando {galleryProgress.completed} de{" "}
@@ -755,13 +761,14 @@ export default function WardrobeOnboardingScreen() {
                     <Animated.View style={toastAnimatedStyle}>
                       <GlassView
                         borderRadius={nativeLayout.pillRadius}
+                        colorScheme="dark"
                         style={styles.notice}
                       >
                         <Text
                           accessibilityLiveRegion="polite"
                           style={[
                             styles.noticeText,
-                            { color: colors.textPrimary },
+                            { color: colors.cameraForeground },
                           ]}
                         >
                           {toast}
@@ -772,13 +779,14 @@ export default function WardrobeOnboardingScreen() {
                   {error ? (
                     <GlassView
                       borderRadius={nativeLayout.cardRadius}
+                      colorScheme="dark"
                       style={styles.notice}
                     >
                       <Text
                         accessibilityRole="alert"
                         style={[
                           styles.noticeText,
-                          { color: colors.destructive },
+                          { color: colors.cameraForeground },
                         ]}
                       >
                         {error}
@@ -801,12 +809,13 @@ export default function WardrobeOnboardingScreen() {
                   >
                     <GlassView
                       borderRadius={nativeLayout.pillRadius}
+                      colorScheme="dark"
                       style={[
                         styles.roundButtonGlass,
-                        { borderColor: colors.glassBorder },
+                        { borderColor: colors.cameraGlassBorder },
                       ]}
                     >
-                      <ImagePlus size={22} color={colors.textPrimary} />
+                      <ImagePlus size={22} color={colors.cameraForeground} />
                     </GlassView>
                   </Pressable>
                   <Pressable
@@ -817,19 +826,19 @@ export default function WardrobeOnboardingScreen() {
                     onPress={() => void takePhoto()}
                     style={({ pressed }) => [
                       styles.shutterOuter,
-                      { borderColor: colors.primaryForeground },
+                      { borderColor: colors.cameraForeground },
                       (!cameraReady || takingPhoto || actionsBusy) &&
                         styles.disabledButton,
                       pressed && cameraReady && !takingPhoto && styles.pressed,
                     ]}
                   >
                     {takingPhoto ? (
-                      <ActivityIndicator color={colors.primaryForeground} />
+                      <ActivityIndicator color={colors.cameraForeground} />
                     ) : (
                       <View
                         style={[
                           styles.shutterInner,
-                          { backgroundColor: colors.primaryForeground },
+                          { backgroundColor: colors.cameraForeground },
                         ]}
                       />
                     )}
@@ -848,12 +857,13 @@ export default function WardrobeOnboardingScreen() {
                   >
                     <GlassView
                       borderRadius={nativeLayout.pillRadius}
+                      colorScheme="dark"
                       style={[
                         styles.roundButtonGlass,
-                        { borderColor: colors.glassBorder },
+                        { borderColor: colors.cameraGlassBorder },
                       ]}
                     >
-                      <Plus size={22} color={colors.textPrimary} />
+                      <Plus size={22} color={colors.cameraForeground} />
                     </GlassView>
                   </Pressable>
                 </View>

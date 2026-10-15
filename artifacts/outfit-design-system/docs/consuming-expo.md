@@ -60,6 +60,16 @@ Metro does not watch sibling artifact folders by default.
 Set `app.json`'s literal `splash.backgroundColor` from
 `tokens.color.light.background` and keep it synchronized when that token changes.
 
+## Resolve the color scheme once
+
+The consuming app's ThemeProvider is the only place that reads
+`useColorScheme()`. It resolves the saved `light`, `dark`, or `system` mode and
+calls `setColorSchemeOverride()` with the resulting `light` or `dark` scheme
+before rendering screens. For native appearance, pass `null` to
+`Appearance.setColorScheme()` only when the saved mode is `system`; guard that
+call from web. `GlassView` and `GradientBackground` consume the shared resolved
+scheme and never read system appearance on their own.
+
 ## Verify
 
 Render `GradientBackground` and `GlassView` from the package, then run Expo

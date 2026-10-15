@@ -17,12 +17,18 @@ function extendPalette<T extends Record<string, string>>(
 ) {
   return {
     ...palette,
+    bgTop: palette.background,
+    bgBottom: palette.secondary,
+    text: palette.foreground,
+    textMuted: palette.mutedForeground,
     backgroundTop: palette.background,
     backgroundBottom: palette.secondary,
     textPrimary: palette.foreground,
     textSecondary: palette.mutedForeground,
     gold: palette.chart1,
     iconInactive: palette.mutedForeground,
+    blobA: palette.chart3,
+    blobB: palette.chart4,
     blobSand: palette.chart3,
     blobGold: palette.chart4,
     blobSage: palette.chart2,
@@ -38,16 +44,29 @@ function extendPalette<T extends Record<string, string>>(
       mode === "dark"
         ? "rgba(255,255,255,0.18)"
         : "rgba(255,255,255,0.7)",
+    placeholder: mode === "dark" ? "#969189" : "#6B6761",
     danger: palette.destructive,
+    primaryBg: palette.primary,
+    onPrimary: palette.primaryForeground,
+    onGold: mode === "dark" ? "#1E1C1A" : palette.foreground,
+    onChip: palette.foreground,
     chipBg:
       mode === "dark"
-        ? "rgba(255,255,255,0.18)"
+        ? "rgba(255,255,255,0.16)"
         : palette.background,
     chipBorder:
       mode === "dark"
-        ? "rgba(255,255,255,0.28)"
+        ? "rgba(255,255,255,0.30)"
         : "rgba(255,255,255,0.75)",
+    backdrop:
+      mode === "dark"
+        ? "rgba(0,0,0,0.45)"
+        : "rgba(0,0,0,0.12)",
     cameraBackground: "#000000",
+    cameraForeground: "#FFFFFF",
+    cameraActionBg: "#FFFFFF",
+    cameraActionText: "#1E1C1A",
+    cameraGlassBorder: "rgba(255,255,255,0.22)",
   };
 }
 
@@ -74,6 +93,8 @@ export const nativeEffects = {
     frostedGradientStart: "rgba(255,255,255,0.42)",
     liquidGradientEnd: "rgba(255,255,255,0.005)",
     frostedGradientEnd: "rgba(255,255,255,0.105)",
+    darkFallbackGradientStart: "rgba(255,255,255,0.10)",
+    darkFallbackGradientEnd: "rgba(255,255,255,0.02)",
     nativeFrostedThreshold: 0.5,
     nativeTintMaxOpacity: 0.18,
     transitionDurationSeconds: 0.24,
