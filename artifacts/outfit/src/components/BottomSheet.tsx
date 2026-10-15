@@ -220,7 +220,7 @@ export function BottomSheet({
         ]}
       >
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <GlassView borderRadius={32} style={StyleSheet.absoluteFill}>
+          <GlassView borderRadius={radius.panel} style={StyleSheet.absoluteFill}>
             <View style={StyleSheet.absoluteFill} />
           </GlassView>
         </View>

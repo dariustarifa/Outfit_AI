@@ -12,7 +12,7 @@ export const BAR_HEIGHT = 64;
 export const BAR_WIDTH = (screenWidth: number) => screenWidth - 40;
 
 export const radius = {
-  control: nativeLayout.pillRadius,
+  control: nativeLayout.cardRadius,
   panel: 32,
   field: 20,
   thumb: 14,

@@ -27,7 +27,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 import {
   getTabNavigationAction,
+  getTabHighlightLayout,
   isProfileTabActive,
+  TAB_HIGHLIGHT_HEIGHT,
+  TAB_HIGHLIGHT_WIDTH,
   type TabRouteTarget,
 } from "@/src/tab-navigation";
 import Animated, {
@@ -92,6 +95,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
   const keyboard = useAnimatedKeyboard();
   const barWidth = BAR_WIDTH(width);
   const tabSlotWidth = barWidth / 3;
+  const tabHighlight = getTabHighlightLayout(tabSlotWidth);
   const barBottom = Math.max(insets.bottom - 12, 12);
   const [expanded, setExpanded] = useState(false);
   const [addSheetVisible, setAddSheetVisible] = useState(false);
@@ -329,7 +333,7 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
       borderRadius: interpolate(
         progress.value,
         [0, 1],
-        [BAR_HEIGHT / 2, radius.panel],
+        [radius.control, radius.panel],
       ),
     };
   });
@@ -385,11 +389,12 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
   });
 
   const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: activeTabProgress.value * (tabSlotWidth * 2) }],
+    transform: [
+      { translateX: activeTabProgress.value * tabHighlight.profileOffset },
+    ],
   }));
 
   const canSend = Boolean(text.trim()) || attachments.length > 0;
-  const highlightStart = tabSlotWidth / 2 - 46;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -609,7 +614,10 @@ export function HomeControls({ onComposerExpandedChange }: HomeControlsProps) {
                   pointerEvents="none"
                   style={[
                     styles.activeHighlight,
-                    { left: highlightStart },
+                    {
+                      left: tabHighlight.left,
+                      width: tabHighlight.width,
+                    },
                     highlightStyle,
                   ]}
                 >
@@ -823,10 +831,10 @@ const styles = StyleSheet.create({
   },
   activeHighlight: {
     position: "absolute",
-    top: (BAR_HEIGHT - 48) / 2,
-    width: 92,
-    height: 48,
-    borderRadius: 24,
+    top: (BAR_HEIGHT - TAB_HIGHLIGHT_HEIGHT) / 2,
+    width: TAB_HIGHLIGHT_WIDTH,
+    height: TAB_HIGHLIGHT_HEIGHT,
+    borderRadius: TAB_HIGHLIGHT_HEIGHT / 2,
     overflow: "hidden",
   },
   tabButton: {

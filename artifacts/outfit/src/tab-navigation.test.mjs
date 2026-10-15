@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  getTabHighlightLayout,
   getTabNavigationAction,
   isProfileTabActive,
 } from "./tab-navigation.ts";
@@ -55,4 +56,30 @@ test("Perfil as the only route falls back to Inicio without adding a duplicate",
   applyAction(stack, getTabNavigationAction(stack.at(-1), "home"));
 
   assert.deepEqual(stack, ["/"]);
+});
+
+test("the 92 × 48 highlight stays centered within each tab on compact screens", () => {
+  const typicalCompactSlot = (320 - 40) / 3;
+  const typicalLayout = getTabHighlightLayout(typicalCompactSlot);
+
+  assert.equal(typicalLayout.width, 92);
+  assert.ok(typicalLayout.left >= 0);
+  assert.ok(typicalLayout.left + typicalLayout.width <= typicalCompactSlot);
+  assert.equal(typicalLayout.profileOffset, typicalCompactSlot * 2);
+  assert.ok(
+    typicalLayout.profileOffset + typicalLayout.left >= typicalCompactSlot * 2,
+  );
+  assert.ok(
+    typicalLayout.profileOffset +
+      typicalLayout.left +
+      typicalLayout.width <=
+      typicalCompactSlot * 3,
+  );
+
+  const narrowSlot = 80;
+  const narrowLayout = getTabHighlightLayout(narrowSlot);
+  assert.equal(narrowLayout.width, narrowSlot);
+  assert.equal(narrowLayout.left, 0);
+  assert.ok(narrowLayout.left + narrowLayout.width <= narrowSlot);
+  assert.ok(narrowLayout.profileOffset >= narrowSlot * 2);
 });

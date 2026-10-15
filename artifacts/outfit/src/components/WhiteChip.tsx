@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { useTheme } from "../theme";
+import { radius, useTheme } from "../theme";
 
 interface WhiteChipProps {
   children?: ReactNode;
@@ -31,5 +31,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.control,
   },
 });
