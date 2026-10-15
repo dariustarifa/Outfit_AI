@@ -151,7 +151,9 @@ export default function ProgressiveOnboardingScreen() {
     setForm(formFromProfile(profile));
     setSelectedCity(cityFromProfile(profile));
     if (profile && !profile.onboardingCompleted && isProfileReady(profile)) {
-      router.replace("/onboarding/intro" as never);
+      router.replace(
+        profile.gender ? "/onboarding/intro" : "/onboarding/gender",
+      );
       return;
     }
     setStep(getInitialOnboardingStep(profile));
@@ -241,6 +243,7 @@ export default function ProgressiveOnboardingScreen() {
     const nextProfile: Profile = {
       name: form.name.trim() || profile?.name || "",
       preferredName: effectivePreferredName,
+      gender: profile?.gender,
       age: Number(form.age) || profile?.age || 0,
       heightCm: Number(form.heightCm) || profile?.heightCm || 0,
       bodyPhotoUri: form.bodyPhotoUri || profile?.bodyPhotoUri || "",
@@ -265,7 +268,11 @@ export default function ProgressiveOnboardingScreen() {
 
       if (step === 6) {
         void success();
-        router.replace("/onboarding/intro" as never);
+        router.replace(
+          nextProfile.gender
+            ? "/onboarding/intro"
+            : "/onboarding/gender",
+        );
       } else {
         setStep(
           (current) => Math.min(current + 1, STEP_COUNT - 1) as OnboardingStep,

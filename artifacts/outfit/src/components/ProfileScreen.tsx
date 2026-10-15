@@ -32,12 +32,23 @@ import {
 } from "@workspace/outfit-design-system/lib/native-theme";
 import { useColors } from "@workspace/outfit-design-system/hooks/use-colors";
 import { useApp } from "@/src/context/AppContext";
-import type { Profile, ProfileUpdate, WardrobeItem } from "@/src/types";
+import type { Gender, Profile, ProfileUpdate, WardrobeItem } from "@/src/types";
 import { formatCity, searchCities, type CityResult } from "@/src/services/geocoding";
 import { selection, success } from "@/src/haptics";
 import { BottomSheet } from "./BottomSheet";
+import {
+  genderLabel,
+  genderOptions,
+  GenderOptionCard,
+} from "./GenderOptionCard";
 
-type EditableField = "name" | "age" | "heightCm" | "city" | "bodyPhotoUri";
+type EditableField =
+  | "name"
+  | "gender"
+  | "age"
+  | "heightCm"
+  | "city"
+  | "bodyPhotoUri";
 type ActiveSheet =
   | { kind: "profile"; field: EditableField }
   | { kind: "garment"; itemId: string }
@@ -46,6 +57,7 @@ type ActiveSheet =
 interface ProfileForm {
   name: string;
   preferredName: string;
+  gender: Gender | null;
   age: string;
   heightCm: string;
   city: string;
@@ -65,6 +77,7 @@ function emptyForm(): ProfileForm {
   return {
     name: "",
     preferredName: "",
+    gender: null,
     age: "",
     heightCm: "",
     city: "",
@@ -76,6 +89,7 @@ function formFromProfile(profile: Profile): ProfileForm {
   return {
     name: profile.name,
     preferredName: profile.preferredName ?? "",
+    gender: profile.gender ?? null,
     age: String(profile.age),
     heightCm: String(profile.heightCm),
     city: profile.city,
@@ -105,6 +119,8 @@ function fieldTitle(field: EditableField): string {
   switch (field) {
     case "name":
       return "Nombre";
+    case "gender":
+      return "Género";
     case "age":
       return "Edad";
     case "heightCm":
@@ -382,6 +398,12 @@ export function ProfileScreen() {
         return;
       }
       updates = { heightCm };
+    } else if (field === "gender") {
+      if (!form.gender) {
+        setMessage("Selecciona una opción para guardar.");
+        return;
+      }
+      updates = { gender: form.gender };
     } else if (field === "city") {
       if (!form.city.trim() || !selectedCity) {
         setMessage("Selecciona una ciudad de los resultados para guardar su ubicación.");
@@ -479,6 +501,12 @@ export function ProfileScreen() {
       icon: <UserRound size={18} color={colors.textSecondary} />,
     },
     {
+      field: "gender",
+      label: "Género",
+      value: profile.gender ? genderLabel(profile.gender) : "Sin indicar",
+      icon: <UserRound size={18} color={colors.textSecondary} />,
+    },
+    {
       field: "age",
       label: "Edad",
       value: `${profile.age} años`,
@@ -505,6 +533,8 @@ export function ProfileScreen() {
   ];
   const activeField =
     activeSheet?.kind === "profile" ? activeSheet.field : null;
+  const isProfileSaveDisabled =
+    saving || (activeField === "gender" && !form.gender);
 
   return (
     <View
@@ -721,6 +751,25 @@ export function ProfileScreen() {
                           colors={colors}
                         />
                       ) : null}
+                      {activeField === "gender" ? (
+                        <View style={styles.genderOptions}>
+                          {genderOptions.map((option) => (
+                            <GenderOptionCard
+                              key={option.value}
+                              gender={option.value}
+                              label={option.label}
+                              selected={form.gender === option.value}
+                              onSelect={(gender) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  gender,
+                                }))
+                              }
+                              testID={`edit-profile-gender-${option.value}`}
+                            />
+                          ))}
+                        </View>
+                      ) : null}
                       {activeField === "city" ? (
                         <View style={styles.cityEditor}>
                           <ProfileInput
@@ -884,13 +933,13 @@ export function ProfileScreen() {
                       <Pressable
                         accessibilityRole="button"
                         testID="save-profile-field"
-                        disabled={saving}
+                        disabled={isProfileSaveDisabled}
                         onPress={() => void saveProfileField()}
                         style={({ pressed }) => [
                           styles.primaryButton,
                           { backgroundColor: colors.primary },
-                          saving && styles.disabledButton,
-                          pressed && !saving && styles.pressed,
+                          isProfileSaveDisabled && styles.disabledButton,
+                          pressed && !isProfileSaveDisabled && styles.pressed,
                         ]}
                       >
                         <Text
@@ -1125,6 +1174,9 @@ const styles = StyleSheet.create({
     paddingVertical: nativeLayout.baseSpacing,
   },
   cityEditor: { gap: nativeLayout.baseSpacing * 2 },
+  genderOptions: {
+    gap: 12,
+  },
   helperText: {
     fontFamily: "Satoshi_400Regular",
     fontSize: 13,

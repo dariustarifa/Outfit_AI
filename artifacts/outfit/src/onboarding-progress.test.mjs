@@ -9,6 +9,7 @@ import { createLocalStorage } from "./storage-core.ts";
 const readyProfile = {
   name: "Ada Lovelace",
   preferredName: "Ada",
+  gender: "female",
   age: 36,
   heightCm: 168,
   bodyPhotoUri: "file:///profile.jpg",
@@ -53,6 +54,17 @@ test("a completed profile opens home after startup loading finishes", () => {
     getStartupScreen(true, { ...readyProfile, onboardingCompleted: true }),
     "loading",
   );
+});
+
+test("a completed legacy profile without gender is sent to the gender step", () => {
+  const { gender: _gender, ...legacyProfile } = readyProfile;
+  const completedLegacyProfile = {
+    ...legacyProfile,
+    onboardingCompleted: true,
+  };
+
+  assert.equal(getStartupScreen(false, completedLegacyProfile), "gender");
+  assert.equal(getStartupScreen(true, completedLegacyProfile), "loading");
 });
 
 test("profile drafts remain in AsyncStorage when the app storage is reloaded", async () => {
@@ -110,4 +122,30 @@ test("profile drafts remain in AsyncStorage when the app storage is reloaded", a
 
   assert.deepEqual(reloaded.profile, draft);
   assert.equal(values.get("outfit:profile:v1"), JSON.stringify(draft));
+
+  const { gender: _gender, ...legacyProfile } = readyProfile;
+  const completedLegacyProfile = {
+    ...legacyProfile,
+    onboardingCompleted: true,
+  };
+  await createAppStorage().saveAppData({
+    profile: completedLegacyProfile,
+    wardrobe: [],
+  });
+  const reloadedLegacyProfile = await createAppStorage().loadAppData();
+
+  assert.deepEqual(reloadedLegacyProfile.profile, completedLegacyProfile);
+  assert.equal("gender" in reloadedLegacyProfile.profile, false);
+
+  const profileWithGender = {
+    ...completedLegacyProfile,
+    gender: "nonbinary",
+  };
+  await createAppStorage().saveAppData({
+    profile: profileWithGender,
+    wardrobe: [],
+  });
+  const reloadedProfileWithGender = await createAppStorage().loadAppData();
+
+  assert.deepEqual(reloadedProfileWithGender.profile, profileWithGender);
 });

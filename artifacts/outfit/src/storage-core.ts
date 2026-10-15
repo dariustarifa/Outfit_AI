@@ -60,6 +60,11 @@ function isProfile(value: unknown): value is Profile {
     typeof value.name === "string" &&
     (value.preferredName === undefined ||
       typeof value.preferredName === "string") &&
+    (value.gender === undefined ||
+      value.gender === "male" ||
+      value.gender === "female" ||
+      value.gender === "nonbinary" ||
+      value.gender === "other") &&
     typeof value.age === "number" &&
     Number.isFinite(value.age) &&
     typeof value.heightCm === "number" &&

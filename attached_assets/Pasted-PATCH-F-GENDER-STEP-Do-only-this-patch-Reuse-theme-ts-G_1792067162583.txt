@@ -1,0 +1,27 @@
+PATCH F — GENDER STEP. Do only this patch. Reuse theme.ts, GradientBackground, haptics.ts, WhiteChip and the existing button styles.
+
+DATA
+- Add gender: "male" | "female" | "nonbinary" | "other" to Profile (types.ts). Save it with the profile in AsyncStorage.
+- Old saved profiles have no gender. Treat gender as optional in old data. On app start: if a profile exists and gender is missing, send the user to the gender step before home. After that step, go straight to home (do not repeat the intro).
+
+NEW SCREEN app/onboarding/gender.tsx
+- Onboarding order is now: profile (screen A) -> gender (this screen) -> intro (screen B) -> wardrobe.
+- Headline "¿Cómo te identificas?" in Melodrama Medium 40.
+- Subtitle "Lo usamos solo para personalizar tus recomendaciones." Satoshi Regular 16, color textSecondary.
+- Four large option cards stacked vertically, gap 12, height 64, radius 24, label Satoshi Medium 18:
+  "Hombre", "Mujer", "No binario", "Otro"
+- Card style: GlassView. Selected card: WhiteChip background + 1.5px gold border + a small gold Check icon on the right.
+- Tapping a card: selection() haptic, and the selected state changes with a 200 ms animation. Only one option can be selected. None is selected at the start.
+- Primary button "Continuar" at the bottom, disabled until an option is selected. On press: success(), save gender in the profile, go to /onboarding/intro (or to home if this is an existing user who only needed this step).
+- Elements fade in one after another, like the other onboarding screens.
+
+PROFILE SCREEN
+- In "Mis datos" add a row "Género" showing the current value in Spanish. Tapping it opens the BottomSheet with the same four options and a "Guardar" button.
+
+Also: getOutfitRecommendations already receives the profile, so profile.gender is available there. Change nothing else in that function.
+
+DONE WHEN
+- A new user goes profile -> gender -> intro.
+- An existing user without gender is asked once, then lands on home.
+- I can change the gender later from the profile.
+Reply with: files changed.

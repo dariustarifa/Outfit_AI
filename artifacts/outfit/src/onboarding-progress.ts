@@ -1,14 +1,15 @@
 import type { Profile } from "./types";
 
 export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
-export type StartupScreen = "loading" | "onboarding" | "home";
+export type StartupScreen = "loading" | "onboarding" | "gender" | "home";
 
 export function getStartupScreen(
   loading: boolean,
   profile: Profile | null,
 ): StartupScreen {
   if (loading) return "loading";
-  return profile?.onboardingCompleted ? "home" : "onboarding";
+  if (!profile?.onboardingCompleted) return "onboarding";
+  return profile.gender ? "home" : "gender";
 }
 
 export function getInitialOnboardingStep(

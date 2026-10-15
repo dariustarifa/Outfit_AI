@@ -5,6 +5,7 @@ import { mergeProfileUpdate } from "./profile-update.ts";
 const existingProfile = {
   name: "Alex",
   preferredName: "A",
+  gender: "female",
   age: 30,
   heightCm: 170,
   bodyPhotoUri: "file:///profile.jpg",
@@ -24,6 +25,7 @@ test("profile edits preserve completed onboarding and unrelated saved profile da
   assert.equal(updated.city, "Sevilla");
   assert.equal(updated.onboardingCompleted, true);
   assert.equal(updated.photoConsent, true);
+  assert.equal(updated.gender, "female");
   assert.equal(updated.bodyPhotoUri, existingProfile.bodyPhotoUri);
   assert.equal(updated.age, existingProfile.age);
 });
@@ -36,4 +38,15 @@ test("profile edits do not change onboarding progress for incomplete profiles", 
 
   assert.equal(updated.age, 31);
   assert.equal(updated.onboardingCompleted, false);
+});
+
+test("a saved gender edit preserves onboarding status and other profile fields", () => {
+  const updated = mergeProfileUpdate(
+    { ...existingProfile, onboardingCompleted: true },
+    { gender: "nonbinary" },
+  );
+
+  assert.equal(updated.gender, "nonbinary");
+  assert.equal(updated.onboardingCompleted, true);
+  assert.equal(updated.name, existingProfile.name);
 });

@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { ArrowRight, CloudSun, Plus, Shirt } from "lucide-react-native";
 import Animated, { FadeInDown, SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -151,6 +151,10 @@ export default function HomeScreen() {
         </View>
       </View>
     );
+  }
+
+  if (startupScreen === "gender") {
+    return <Redirect href="/onboarding/gender" />;
   }
 
   if (startupScreen === "onboarding") {

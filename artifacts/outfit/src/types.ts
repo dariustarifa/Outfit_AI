@@ -1,6 +1,9 @@
+export type Gender = "male" | "female" | "nonbinary" | "other";
+
 export interface Profile {
   name: string;
   preferredName?: string;
+  gender?: Gender;
   age: number;
   heightCm: number;
   bodyPhotoUri: string;
@@ -16,6 +19,7 @@ export type ProfileUpdate = Partial<
     Profile,
     | "name"
     | "preferredName"
+    | "gender"
     | "age"
     | "heightCm"
     | "bodyPhotoUri"
