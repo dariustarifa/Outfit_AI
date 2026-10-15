@@ -35,6 +35,10 @@ interface LocalStorageDependencies {
   fileSystem: ManagedFileSystem;
   platform: string;
   persistWebImage(sourceUri: string): Promise<string>;
+  resizeProfilePhoto(
+    sourceUri: string,
+    maxDimension: number,
+  ): Promise<string>;
 }
 
 const PROFILE_KEY = "outfit:profile:v1";
@@ -42,6 +46,8 @@ const WARDROBE_KEY = "outfit:wardrobe:v1";
 const WEATHER_KEY = "outfit:weather:v1";
 const ONBOARDING_DRAFT_KEY = "outfit:onboarding-draft:v1";
 const PHOTO_DIRECTORY_NAME = "outfit/wardrobe/";
+/** Native profile photos are stored with their longest side at 1280 px max. */
+export const PROFILE_PHOTO_MAX_DIMENSION = 1280;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -152,6 +158,7 @@ export function createLocalStorage({
   fileSystem,
   platform,
   persistWebImage,
+  resizeProfilePhoto,
 }: LocalStorageDependencies) {
   let onboardingDraftWriteQueue: Promise<void> = Promise.resolve();
 
@@ -331,6 +338,50 @@ export function createLocalStorage({
     return storedUri;
   }
 
+  async function copyProfilePhotoToAppDocuments(
+    sourceUri: string,
+  ): Promise<string> {
+    if (platform === "web") return copyImageToAppDocuments(sourceUri);
+    if (!sourceUri.trim()) {
+      throw new Error("An image URI is required.");
+    }
+
+    const documentDirectory = fileSystem.documentDirectory;
+    if (!documentDirectory) {
+      throw new Error("The app document directory is unavailable.");
+    }
+    const appPhotoDirectory = `${documentDirectory}${PHOTO_DIRECTORY_NAME}`;
+    if (sourceUri.startsWith(appPhotoDirectory)) return sourceUri;
+
+    const preparedUri = await resizeProfilePhoto(
+      sourceUri,
+      PROFILE_PHOTO_MAX_DIMENSION,
+    );
+    let copyError: unknown;
+    try {
+      return await copyImageToAppDocuments(preparedUri);
+    } catch (error) {
+      copyError = error;
+      throw error;
+    } finally {
+      if (preparedUri !== sourceUri) {
+        try {
+          const preparedFile = await fileSystem.getInfoAsync(preparedUri);
+          if (preparedFile.exists) await fileSystem.deleteAsync(preparedUri);
+        } catch (cleanupError) {
+          if (copyError !== undefined) {
+            throw new AggregateError(
+              [copyError, cleanupError],
+              "The profile photo could not be saved, and its temporary image could not be removed.",
+              { cause: copyError },
+            );
+          }
+          throw cleanupError;
+        }
+      }
+    }
+  }
+
   async function removeStoredImage(imageUri: string): Promise<void> {
     const documentDirectory = fileSystem.documentDirectory;
     if (
@@ -371,6 +422,7 @@ export function createLocalStorage({
     loadWeatherSnapshot,
     saveWeatherSnapshot,
     copyImageToAppDocuments,
+    copyProfilePhotoToAppDocuments,
     removeStoredImage,
     removeUnreferencedStoredImage,
   };

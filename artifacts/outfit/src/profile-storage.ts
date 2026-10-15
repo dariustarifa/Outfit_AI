@@ -1,7 +1,7 @@
 import type { Profile, StoredAppData } from "./types";
 
 interface ProfileStorageDependencies {
-  copyImageToAppDocuments(sourceUri: string): Promise<string>;
+  copyProfilePhotoToAppDocuments(sourceUri: string): Promise<string>;
   commit(data: StoredAppData): Promise<void>;
   removeStoredImage(imageUri: string): Promise<void>;
   removeUnreferencedStoredImage(imageUri: string): Promise<void>;
@@ -11,7 +11,7 @@ export async function saveProfileWithPhoto(
   nextProfile: Profile | null,
   currentData: StoredAppData,
   {
-    copyImageToAppDocuments,
+    copyProfilePhotoToAppDocuments,
     commit,
     removeStoredImage,
     removeUnreferencedStoredImage,
@@ -22,7 +22,9 @@ export async function saveProfileWithPhoto(
     nextProfile?.bodyPhotoUri
       ? {
           ...nextProfile,
-          bodyPhotoUri: await copyImageToAppDocuments(nextProfile.bodyPhotoUri),
+          bodyPhotoUri: await copyProfilePhotoToAppDocuments(
+            nextProfile.bodyPhotoUri,
+          ),
         }
       : nextProfile;
 

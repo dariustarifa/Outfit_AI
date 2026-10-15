@@ -1,7 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
-import { Platform } from "react-native";
-import { createLocalStorage } from "./storage-core";
+import * as ImageManipulator from "expo-image-manipulator";
+import { Image, Platform } from "react-native";
+import {
+  createLocalStorage,
+  PROFILE_PHOTO_MAX_DIMENSION,
+} from "./storage-core";
 
 async function persistWebImage(sourceUri: string): Promise<string> {
   const image = document.createElement("img");
@@ -47,11 +51,42 @@ async function persistWebImage(sourceUri: string): Promise<string> {
   });
 }
 
+async function resizeProfilePhoto(
+  sourceUri: string,
+  maxDimension: number,
+): Promise<string> {
+  const { width, height } = await new Promise<{
+    width: number;
+    height: number;
+  }>((resolve, reject) => {
+    Image.getSize(sourceUri, (photoWidth, photoHeight) => {
+      resolve({ width: photoWidth, height: photoHeight });
+    }, reject);
+  });
+  if (Math.max(width, height) <= maxDimension) {
+    return sourceUri;
+  }
+
+  const resize =
+    width >= height
+      ? { width: maxDimension }
+      : { height: maxDimension };
+  // The native decoder applies the source image's EXIF orientation before
+  // resizing, so portrait and landscape photos keep their intended rotation.
+  const result = await ImageManipulator.manipulateAsync(
+    sourceUri,
+    [{ resize }],
+    { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG },
+  );
+  return result.uri;
+}
+
 const storage = createLocalStorage({
   asyncStorage: AsyncStorage,
   fileSystem: FileSystem,
   platform: Platform.OS,
   persistWebImage,
+  resizeProfilePhoto,
 });
 
 export const {
@@ -63,6 +98,7 @@ export const {
   loadWeatherSnapshot,
   saveWeatherSnapshot,
   copyImageToAppDocuments,
+  copyProfilePhotoToAppDocuments,
   removeStoredImage,
   removeUnreferencedStoredImage,
 } = storage;

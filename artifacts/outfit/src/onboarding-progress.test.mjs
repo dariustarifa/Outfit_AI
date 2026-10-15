@@ -109,6 +109,7 @@ test("profile drafts remain in AsyncStorage when the app storage is reloaded", a
       persistWebImage: async () => {
         throw new Error("Web image persistence is not used in this test.");
       },
+      resizeProfilePhoto: async (uri) => uri,
     });
   const draft = {
     name: "Ada Lovelace",
@@ -196,11 +197,12 @@ test("a failed profile save keeps onboarding on the same step and can be retried
     persistWebImage: async () => {
       throw new Error("Web image persistence is not used in this test.");
     },
+    resizeProfilePhoto: async (uri) => uri,
   });
   let currentData = { profile: null, wardrobe: [] };
   const persistProfile = (nextProfile) =>
     saveProfileWithPhoto(nextProfile, currentData, {
-      copyImageToAppDocuments: storage.copyImageToAppDocuments,
+      copyProfilePhotoToAppDocuments: storage.copyProfilePhotoToAppDocuments,
       async commit(nextData) {
         await storage.saveAppData(nextData);
         currentData = nextData;

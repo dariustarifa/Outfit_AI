@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   copyImageToAppDocuments,
+  copyProfilePhotoToAppDocuments,
   clearOnboardingDraft as clearStoredOnboardingDraft,
   loadAppData,
   loadOnboardingDraft,
@@ -138,7 +139,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const persistOnboardingPhoto = useCallback(
-    (sourceUri: string) => copyImageToAppDocuments(sourceUri),
+    (sourceUri: string) => copyProfilePhotoToAppDocuments(sourceUri),
     [],
   );
 
@@ -146,7 +147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (nextProfile: Profile | null) => {
       try {
         return await saveProfileWithPhoto(nextProfile, currentData.current, {
-          copyImageToAppDocuments,
+          copyProfilePhotoToAppDocuments,
           commit,
           removeStoredImage,
           removeUnreferencedStoredImage,

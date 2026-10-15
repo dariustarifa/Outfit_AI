@@ -20,6 +20,8 @@ function createEnvironment(platform) {
   const values = new Map();
   const files = new Map();
   const directories = new Set();
+  const resizeCalls = [];
+  let nextResizedPhotoId = 0;
   let failNextMetadataWrite = false;
   let failNextDelete = false;
   let failAfterMetadataWrite = false;
@@ -60,7 +62,10 @@ function createEnvironment(platform) {
       files.set(to, files.get(from));
     },
     async deleteAsync(uri) {
-      if (failNextDelete) {
+      if (
+        failNextDelete &&
+        uri.startsWith("file:///app/documents/outfit/")
+      ) {
         failNextDelete = false;
         throw new Error("Photo cleanup failed.");
       }
@@ -74,10 +79,22 @@ function createEnvironment(platform) {
     persistWebImage: async () => {
       throw new Error("Web image persistence is not used in native tests.");
     },
+    async resizeProfilePhoto(sourceUri, maxDimension) {
+      resizeCalls.push({ sourceUri, maxDimension });
+      if (!files.has(sourceUri)) {
+        throw new Error(`Missing source image: ${sourceUri}`);
+      }
+      const resizedUri = `file:///cache/profile-photo-${++nextResizedPhotoId}.jpg`;
+      files.set(
+        resizedUri,
+        `${files.get(sourceUri)}:resized-to-${maxDimension}`,
+      );
+      return resizedUri;
+    },
   });
   let currentData = { profile: null, wardrobe: [] };
   const dependencies = {
-    copyImageToAppDocuments: storage.copyImageToAppDocuments,
+    copyProfilePhotoToAppDocuments: storage.copyProfilePhotoToAppDocuments,
     async commit(next) {
       if (failNextMetadataWrite) {
         failNextMetadataWrite = false;
@@ -97,6 +114,7 @@ function createEnvironment(platform) {
   return {
     files,
     fileSystem,
+    resizeCalls,
     save: (nextProfile) =>
       saveProfileWithPhoto(nextProfile, currentData, dependencies),
     async reload() {
@@ -135,15 +153,22 @@ for (const platform of ["ios", "android"]) {
       assert.notEqual(saved.bodyPhotoUri, sourceUri);
       assert.equal(
         env.files.get(saved.bodyPhotoUri),
-        `${platform}-${source}-image-bytes`,
+        `${platform}-${source}-image-bytes:resized-to-1280`,
       );
       assert.equal(saved.onboardingCompleted, false);
+      assert.deepEqual(env.resizeCalls, [
+        { sourceUri, maxDimension: 1280 },
+      ]);
+      assert.equal(
+        [...env.files.keys()].some((uri) => uri.startsWith("file:///cache/")),
+        false,
+      );
 
       const reloaded = await env.reload();
       assert.equal(reloaded.profile.bodyPhotoUri, saved.bodyPhotoUri);
       assert.equal(
         env.files.get(reloaded.profile.bodyPhotoUri),
-        `${platform}-${source}-image-bytes`,
+        `${platform}-${source}-image-bytes:resized-to-1280`,
       );
       assert.equal(
         (await env.fileSystem.getInfoAsync(reloaded.profile.bodyPhotoUri))
@@ -222,7 +247,7 @@ test("a failed photo replacement keeps the previously saved photo", async () => 
 
   assert.equal(
     env.files.get(previousProfile.bodyPhotoUri),
-    "old-profile-image",
+    "old-profile-image:resized-to-1280",
   );
   assert.equal(
     [...env.files.keys()].filter((uri) =>
@@ -279,7 +304,10 @@ test("failed save cleanup preserves a photo when metadata references it", async 
 
   const reloaded = await env.reload();
   assert.ok(reloaded.profile.bodyPhotoUri);
-  assert.equal(env.files.get(reloaded.profile.bodyPhotoUri), "profile-image");
+  assert.equal(
+    env.files.get(reloaded.profile.bodyPhotoUri),
+    "profile-image:resized-to-1280",
+  );
 });
 
 test("loading saved data preserves the profile photo while removing stale managed photos", async () => {
@@ -295,6 +323,9 @@ test("loading saved data preserves the profile photo while removing stale manage
   const reloaded = await env.reload();
 
   assert.equal(reloaded.profile.bodyPhotoUri, saved.bodyPhotoUri);
-  assert.equal(env.files.get(saved.bodyPhotoUri), "profile-image");
+  assert.equal(
+    env.files.get(saved.bodyPhotoUri),
+    "profile-image:resized-to-1280",
+  );
   assert.equal(env.files.has(stalePhotoUri), false);
 });

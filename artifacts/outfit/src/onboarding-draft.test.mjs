@@ -65,6 +65,7 @@ function createEnvironment(asyncStorageOverrides = {}) {
       persistWebImage: async () => {
         throw new Error("Web image persistence is not used in this test.");
       },
+      resizeProfilePhoto: async (uri) => uri,
     });
 
   return { createStorage, files, values };

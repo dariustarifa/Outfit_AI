@@ -55,7 +55,10 @@ function createTestEnvironment(platform = "ios") {
       files.set(to, files.get(from));
     },
     async deleteAsync(uri) {
-      if (failNextDelete) {
+      if (
+        failNextDelete &&
+        uri.startsWith("file:///app/documents/outfit/")
+      ) {
         failNextDelete = false;
         throw new Error("Photo cleanup failed.");
       }
@@ -70,13 +73,14 @@ function createTestEnvironment(platform = "ios") {
       persistWebImage: async () => {
         throw new Error("Web image persistence is not used in native tests.");
       },
+      resizeProfilePhoto: async (uri) => uri,
     });
   let storage = createStorage();
 
   let currentData = { profile: null, wardrobe: [] };
   async function saveProfile(profile) {
     return saveProfileWithPhoto(profile, currentData, {
-      copyImageToAppDocuments: storage.copyImageToAppDocuments,
+      copyProfilePhotoToAppDocuments: storage.copyProfilePhotoToAppDocuments,
       async commit(next) {
         await storage.saveAppData(next);
         currentData = next;
