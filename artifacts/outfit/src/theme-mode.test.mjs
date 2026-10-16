@@ -10,6 +10,7 @@ import {
   loadThemeMode,
   persistGlassLevel,
   persistThemeMode,
+  resolveColorScheme,
   THEME_MODE_KEY,
 } from "./theme-mode.ts";
 
@@ -34,19 +35,35 @@ test("missing or invalid theme preferences use system mode", async () => {
   );
 });
 
-test("theme preference persists and reloads", async () => {
+test("each theme preference persists and reloads", async () => {
   const storage = createMemoryStorage();
 
-  await persistThemeMode(storage, "dark");
+  for (const mode of ["system", "light", "dark"]) {
+    await persistThemeMode(storage, mode);
 
-  assert.equal(storage.values.get(THEME_MODE_KEY), "dark");
-  assert.equal(await loadThemeMode(storage), "dark");
+    assert.equal(storage.values.get(THEME_MODE_KEY), mode);
+    assert.equal(await loadThemeMode(storage), mode);
+  }
 });
 
 test("system mode resets Appearance while explicit modes override it", () => {
   assert.equal(colorSchemeForMode("system"), null);
   assert.equal(colorSchemeForMode("light"), "light");
   assert.equal(colorSchemeForMode("dark"), "dark");
+});
+
+test("automatic mode follows system appearance changes without restarting", () => {
+  assert.equal(resolveColorScheme("system", "light"), "light");
+  assert.equal(resolveColorScheme("system", "dark"), "dark");
+  assert.equal(resolveColorScheme("system", "light"), "light");
+  assert.equal(resolveColorScheme("system", null), "light");
+});
+
+test("fixed theme modes ignore system appearance changes", () => {
+  for (const systemScheme of ["light", "dark", null]) {
+    assert.equal(resolveColorScheme("light", systemScheme), "light");
+    assert.equal(resolveColorScheme("dark", systemScheme), "dark");
+  }
 });
 
 test("glass level defaults to clear and ignores invalid or legacy values", async () => {

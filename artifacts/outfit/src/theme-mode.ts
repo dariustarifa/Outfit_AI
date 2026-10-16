@@ -20,6 +20,13 @@ export function colorSchemeForMode(
   return mode === "system" ? null : mode;
 }
 
+export function resolveColorScheme(
+  mode: ThemeMode,
+  systemScheme: "light" | "dark" | null,
+): "light" | "dark" {
+  return mode === "system" ? systemScheme ?? "light" : mode;
+}
+
 export async function loadThemeMode(
   storage: Pick<ThemeModeStorage, "getItem">,
 ): Promise<ThemeMode> {

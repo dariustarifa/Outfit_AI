@@ -12,7 +12,13 @@ import {
 import { Appearance, Platform, useColorScheme } from "react-native";
 import { nativeTheme } from "@workspace/outfit-design-system/lib/native-theme";
 import { setColorSchemeOverride } from "@workspace/outfit-design-system/hooks/use-colors";
-import { loadThemeMode, persistThemeMode, type ThemeMode } from "../theme-mode";
+import {
+  colorSchemeForMode,
+  loadThemeMode,
+  persistThemeMode,
+  resolveColorScheme,
+  type ThemeMode,
+} from "../theme-mode";
 import { logContrastAudit } from "./contrast";
 
 const lightColors = nativeTheme.light;
@@ -32,15 +38,9 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 let contrastAuditHasRun = false;
 
-function resolveScheme(mode: ThemeMode, systemScheme: ColorScheme | null): ColorScheme {
-  return mode === "system" ? systemScheme ?? "light" : mode;
-}
-
 function setNativeAppearance(mode: ThemeMode) {
   if (Platform.OS !== "web") {
-    Appearance.setColorScheme(
-      (mode === "system" ? null : mode) as never,
-    );
+    Appearance.setColorScheme(colorSchemeForMode(mode) as never);
   }
 }
 
@@ -53,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>("system");
   const modeRef = useRef<ThemeMode>("system");
   const [ready, setReady] = useState(false);
-  const scheme = resolveScheme(mode, normalizedSystemScheme);
+  const scheme = resolveColorScheme(mode, normalizedSystemScheme);
   const colors = scheme === "dark" ? darkColors : lightColors;
   modeRef.current = mode;
 
@@ -66,7 +66,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         return "system" as const;
       })
       .then((initialMode) => {
-        const initialScheme = resolveScheme(
+        const initialScheme = resolveColorScheme(
           initialMode,
           systemSchemeRef.current,
         );
@@ -113,7 +113,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setModeState(nextMode);
       setNativeAppearance(nextMode);
       setColorSchemeOverride(
-        resolveScheme(nextMode, systemSchemeRef.current),
+        resolveColorScheme(nextMode, systemSchemeRef.current),
       );
       try {
         await persistThemeMode(AsyncStorage, nextMode);
@@ -123,7 +123,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           setModeState(previousMode);
           setNativeAppearance(previousMode);
           setColorSchemeOverride(
-            resolveScheme(previousMode, systemSchemeRef.current),
+            resolveColorScheme(previousMode, systemSchemeRef.current),
           );
         }
         throw error;
