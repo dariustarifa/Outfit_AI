@@ -117,7 +117,7 @@ export function PopHost() {
     if (closing) {
       progress.value = withTiming(
         0,
-        { duration: 240, easing: Easing.out(Easing.cubic) },
+        { duration: 300, easing: Easing.out(Easing.cubic) },
         (finished) => {
           if (finished) runOnJS(finishClose)();
         },
@@ -128,7 +128,7 @@ export function PopHost() {
     setGlassReady(false);
     progress.value = 0;
     progress.value = withTiming(1, {
-      duration: 320,
+      duration: 380,
       easing: Easing.out(Easing.cubic),
     });
   }, [closing, finishClose, pop, progress]);

@@ -82,7 +82,7 @@ export function BottomSheet({
     keyboardOffset.value = 0;
     void tapLight();
     progress.value = withTiming(1, {
-      duration: 320,
+      duration: 380,
       easing: Easing.out(Easing.cubic),
     });
   }, [visible, progress, sheetHeight, keyboardOffset]);
@@ -91,9 +91,13 @@ export function BottomSheet({
     if (visible || !mounted) return;
     closeStarted.current = true;
     Keyboard.dismiss();
-    progress.value = withTiming(0, { duration: 240 }, (finished) => {
-      if (finished) runOnJS(finishClose)();
-    });
+    progress.value = withTiming(
+      0,
+      { duration: 300, easing: Easing.out(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(finishClose)();
+      },
+    );
   }, [visible, mounted, progress, finishClose]);
 
   useEffect(() => {
