@@ -188,7 +188,7 @@ export function PopHost() {
       Gesture.Pan()
         .activeOffsetY(12)
         .onEnd((event) => {
-          if (event.translationY > 90 || event.velocityY > 900) {
+          if (event.translationY > 48 || event.velocityY > 650) {
             runOnJS(close)();
           }
         }),
@@ -216,19 +216,16 @@ export function PopHost() {
           onPress={close}
         />
       </Animated.View>
-      <GestureDetector gesture={panGesture}>
-        <Animated.View
-          testID="pop-container"
-          style={[
-            styles.container,
-            { backgroundColor: colors.bgTop },
-            frameStyle,
-          ]}
-        >
-          <View
-            pointerEvents="none"
-            style={styles.dragHandleArea}
-          >
+      <Animated.View
+        testID="pop-container"
+        style={[
+          styles.container,
+          { backgroundColor: colors.bgTop },
+          frameStyle,
+        ]}
+      >
+        <GestureDetector gesture={panGesture}>
+          <View collapsable={false} style={styles.dragHandleArea}>
             <View
               style={[
                 styles.dragHandle,
@@ -236,6 +233,7 @@ export function PopHost() {
               ]}
             />
           </View>
+        </GestureDetector>
           <Animated.View
             pointerEvents="none"
             style={[StyleSheet.absoluteFill, previewStyle]}
@@ -259,8 +257,7 @@ export function PopHost() {
           >
             {pop.content(close, glassReady)}
           </Animated.View>
-        </Animated.View>
-      </GestureDetector>
+      </Animated.View>
     </View>
   );
 }
@@ -290,10 +287,10 @@ const styles = StyleSheet.create({
   },
   dragHandleArea: {
     position: "absolute",
-    top: nativeLayout.baseSpacing * 2,
+    top: 0,
     left: 0,
     right: 0,
-    height: nativeLayout.baseSpacing * 6,
+    height: nativeLayout.baseSpacing * 16,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,

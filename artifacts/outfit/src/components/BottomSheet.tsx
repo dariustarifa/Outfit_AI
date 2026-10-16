@@ -23,7 +23,6 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,7 +40,6 @@ interface BottomSheetProps {
   backdropLabel?: string;
 }
 
-const spring = { damping: 20, stiffness: 220, mass: 1 };
 const screenHeight = Dimensions.get("screen").height;
 
 export function BottomSheet({
@@ -60,7 +58,6 @@ export function BottomSheet({
   const progress = useSharedValue(0);
   const sheetHeight = useSharedValue(0);
   const keyboardOffset = useSharedValue(0);
-  const dragOffset = useSharedValue(0);
   const closeStarted = useRef(false);
   const retainedChildren = useRef(children);
 
@@ -83,13 +80,12 @@ export function BottomSheet({
     progress.value = 0;
     sheetHeight.value = 0;
     keyboardOffset.value = 0;
-    dragOffset.value = 0;
     void tapLight();
     progress.value = withTiming(1, {
       duration: 320,
       easing: Easing.out(Easing.cubic),
     });
-  }, [visible, progress, sheetHeight, keyboardOffset, dragOffset]);
+  }, [visible, progress, sheetHeight, keyboardOffset]);
 
   useEffect(() => {
     if (visible || !mounted) return;
@@ -166,8 +162,7 @@ export function BottomSheet({
       transform: [
         {
           translateY:
-            interpolate(progress.value, [0, 1], [hiddenOffset, 0]) +
-            dragOffset.value -
+            interpolate(progress.value, [0, 1], [hiddenOffset, 0]) -
             keyboardOffset.value,
         },
       ],
@@ -179,14 +174,10 @@ export function BottomSheet({
   }));
 
   const panGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      dragOffset.value = Math.max(0, event.translationY);
-    })
+    .activeOffsetY(12)
     .onEnd((event) => {
-      if (event.translationY > 80 || event.velocityY > 800) {
+      if (event.translationY > 48 || event.velocityY > 650) {
         runOnJS(requestClose)();
-      } else {
-        dragOffset.value = withSpring(0, spring);
       }
     });
 
@@ -264,7 +255,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   handleArea: {
-    minHeight: 36,
+    minHeight: nativeLayout.baseSpacing * 16,
     alignItems: "center",
     justifyContent: "center",
   },
