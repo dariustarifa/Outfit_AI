@@ -14,6 +14,7 @@ function createTestEnvironment(platform = "ios") {
   const errors = [];
   let failNextMetadataWrite = false;
   let failNextDelete = false;
+  let failManagedPhotoDeletes = false;
   const asyncStorage = {
     async multiGet(keys) {
       return keys.map((key) => [key, values.get(key) ?? null]);
@@ -56,7 +57,7 @@ function createTestEnvironment(platform = "ios") {
     },
     async deleteAsync(uri) {
       if (
-        failNextDelete &&
+        (failNextDelete || failManagedPhotoDeletes) &&
         uri.startsWith("file:///app/documents/outfit/")
       ) {
         failNextDelete = false;
@@ -74,6 +75,9 @@ function createTestEnvironment(platform = "ios") {
         throw new Error("Web image persistence is not used in native tests.");
       },
       resizeProfilePhoto: async (uri) => uri,
+      onManagedPhotoCleanupError(uri, error) {
+        errors.push(new Error(`${uri}: ${error.message}`));
+      },
     });
   let storage = createStorage();
 
@@ -136,6 +140,9 @@ function createTestEnvironment(platform = "ios") {
     },
     failNextDelete() {
       failNextDelete = true;
+    },
+    failManagedPhotoDeletes(value) {
+      failManagedPhotoDeletes = value;
     },
   };
 }
@@ -480,6 +487,62 @@ test("an interrupted old-photo cleanup is reconciled on the next load", async ()
   const updated = await env.reload();
   assert.notEqual(updated.wardrobe[0].imageUri, item.imageUri);
   assert.equal(env.files.has(updated.wardrobe[0].imageUri), true);
+  assert.equal(env.files.has(item.imageUri), false);
+});
+
+test("saved data loads during repeated orphan cleanup failures and retries later", async () => {
+  const env = createTestEnvironment();
+  const profile = {
+    name: "Avery",
+    preferredName: "",
+    gender: "other",
+    age: 30,
+    heightCm: 170,
+    bodyPhotoUri: "",
+    city: "Portland",
+    photoConsent: false,
+    onboardingCompleted: true,
+  };
+  await env.seedProfile(profile);
+  env.setSourcePhoto("file:///picker/original.jpg", "original-image");
+  env.setSourcePhoto("file:///picker/replacement.jpg", "replacement-image");
+  const item = await env.actions.addItem({
+    imageUri: "file:///picker/original.jpg",
+    note: "Coat",
+  });
+
+  env.failManagedPhotoDeletes(true);
+  await assert.rejects(
+    env.actions.updateItem(item.id, {
+      imageUri: "file:///picker/replacement.jpg",
+    }),
+    /Photo cleanup failed/,
+  );
+
+  const replacementUri = env.files.has(item.imageUri)
+    ? [...env.files.keys()].find(
+        (uri) =>
+          uri.startsWith("file:///app/documents/outfit/wardrobe/") &&
+          uri !== item.imageUri,
+      )
+    : undefined;
+  assert.ok(replacementUri);
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const loaded = await env.reload();
+    assert.deepEqual(loaded.profile, profile);
+    assert.equal(loaded.wardrobe[0].imageUri, replacementUri);
+    assert.equal(env.files.has(item.imageUri), true);
+  }
+  assert.equal(
+    env.errors.filter((error) => error.message.includes(item.imageUri)).length,
+    2,
+  );
+
+  env.failManagedPhotoDeletes(false);
+  const recovered = await env.reload();
+  assert.deepEqual(recovered.profile, profile);
+  assert.equal(recovered.wardrobe[0].imageUri, replacementUri);
   assert.equal(env.files.has(item.imageUri), false);
 });
 

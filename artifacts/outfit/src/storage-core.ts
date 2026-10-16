@@ -39,6 +39,7 @@ interface LocalStorageDependencies {
     sourceUri: string,
     maxDimension: number,
   ): Promise<string>;
+  onManagedPhotoCleanupError?(uri: string, error: Error): void;
 }
 
 const PROFILE_KEY = "outfit:profile:v1";
@@ -159,6 +160,7 @@ export function createLocalStorage({
   platform,
   persistWebImage,
   resizeProfilePhoto,
+  onManagedPhotoCleanupError,
 }: LocalStorageDependencies) {
   let onboardingDraftWriteQueue: Promise<void> = Promise.resolve();
 
@@ -230,7 +232,32 @@ export function createLocalStorage({
 
       const photoInfo = await fileSystem.getInfoAsync(photoUri);
       if (photoInfo.exists && !photoInfo.isDirectory) {
-        await fileSystem.deleteAsync(photoUri);
+        try {
+          await fileSystem.deleteAsync(photoUri);
+        } catch (cause) {
+          const error =
+            cause instanceof Error
+              ? cause
+              : new Error("Could not remove an unreferenced app photo.", {
+                  cause,
+                });
+          try {
+            if (onManagedPhotoCleanupError) {
+              onManagedPhotoCleanupError(photoUri, error);
+            } else {
+              console.warn(
+                `Could not remove unreferenced app photo "${photoUri}". It will be retried on a later load.`,
+                error,
+              );
+            }
+          } catch (reportingError) {
+            console.warn(
+              `Could not report failed cleanup for unreferenced app photo "${photoUri}".`,
+              reportingError,
+              error,
+            );
+          }
+        }
       }
     }
   }
