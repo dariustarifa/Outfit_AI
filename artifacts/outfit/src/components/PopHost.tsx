@@ -9,7 +9,6 @@ import {
 } from "react";
 import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Image } from "expo-image";
 import Animated, {
   Easing,
   Extrapolation,
@@ -166,14 +165,6 @@ export function PopHost() {
       Extrapolation.CLAMP,
     ),
   }));
-  const previewStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [0.7, 1],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
-  }));
   const contentStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       progress.value,
@@ -234,29 +225,17 @@ export function PopHost() {
             />
           </View>
         </GestureDetector>
-          <Animated.View
-            pointerEvents="none"
-            style={[StyleSheet.absoluteFill, previewStyle]}
-          >
-            <Image
-              source={{ uri: pop.image }}
-              style={styles.previewImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              accessibilityLabel="Vista previa de la prenda"
-            />
-          </Animated.View>
-          <Animated.View
-            pointerEvents={glassReady ? "auto" : "none"}
-            style={[
-              StyleSheet.absoluteFill,
-              styles.detail,
-              { paddingBottom: insets.bottom + nativeLayout.baseSpacing * 4 },
-              contentStyle,
-            ]}
-          >
-            {pop.content(close, glassReady)}
-          </Animated.View>
+        <Animated.View
+          pointerEvents={glassReady ? "auto" : "none"}
+          style={[
+            StyleSheet.absoluteFill,
+            styles.detail,
+            { paddingBottom: insets.bottom + nativeLayout.baseSpacing * 4 },
+            contentStyle,
+          ]}
+        >
+          {pop.content(close, glassReady)}
+        </Animated.View>
       </Animated.View>
     </View>
   );
@@ -300,10 +279,6 @@ const styles = StyleSheet.create({
     height: nativeLayout.baseSpacing,
     borderRadius: nativeLayout.pillRadius,
     opacity: 0.55,
-  },
-  previewImage: {
-    width: "100%",
-    height: "100%",
   },
   detail: {
     zIndex: 1,
