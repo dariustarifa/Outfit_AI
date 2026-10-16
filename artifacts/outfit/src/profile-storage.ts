@@ -1,23 +1,21 @@
-import type { Profile, StoredAppData } from "./types";
+import type { Profile } from "./types";
 
 interface ProfileStorageDependencies {
   copyProfilePhotoToAppDocuments(sourceUri: string): Promise<string>;
-  commit(data: StoredAppData): Promise<void>;
+  commitProfile(profile: Profile | null): Promise<Profile | null>;
   removeStoredImage(imageUri: string): Promise<void>;
   removeUnreferencedStoredImage(imageUri: string): Promise<void>;
 }
 
 export async function saveProfileWithPhoto(
   nextProfile: Profile | null,
-  currentData: StoredAppData,
   {
     copyProfilePhotoToAppDocuments,
-    commit,
+    commitProfile,
     removeStoredImage,
     removeUnreferencedStoredImage,
   }: ProfileStorageDependencies,
 ): Promise<Profile | null> {
-  const previousUri = currentData.profile?.bodyPhotoUri;
   const savedProfile =
     nextProfile?.bodyPhotoUri
       ? {
@@ -27,9 +25,10 @@ export async function saveProfileWithPhoto(
           ),
         }
       : nextProfile;
+  let previousProfile: Profile | null;
 
   try {
-    await commit({ ...currentData, profile: savedProfile });
+    previousProfile = await commitProfile(savedProfile);
   } catch (commitError) {
     const newPhotoUri = savedProfile?.bodyPhotoUri;
     if (newPhotoUri) {
@@ -46,6 +45,7 @@ export async function saveProfileWithPhoto(
     throw commitError;
   }
 
+  const previousUri = previousProfile?.bodyPhotoUri;
   if (previousUri && previousUri !== savedProfile?.bodyPhotoUri) {
     await removeStoredImage(previousUri);
   }

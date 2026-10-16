@@ -7,7 +7,7 @@ export interface NewWardrobeItem {
 
 interface WardrobeActionDependencies {
   getData(): StoredAppData;
-  commit(next: StoredAppData): Promise<void>;
+  commitWardrobe(wardrobe: WardrobeItem[]): Promise<void>;
   copyImageToAppDocuments(sourceUri: string): Promise<string>;
   removeStoredImage(imageUri: string): Promise<void>;
   removeUnreferencedStoredImage(imageUri: string): Promise<void>;
@@ -16,7 +16,7 @@ interface WardrobeActionDependencies {
 
 export function createWardrobeActions({
   getData,
-  commit,
+  commitWardrobe,
   copyImageToAppDocuments,
   removeStoredImage,
   removeUnreferencedStoredImage,
@@ -56,7 +56,7 @@ export function createWardrobeActions({
         };
         const currentData = getData();
         const nextWardrobe = [...currentData.wardrobe, savedItem];
-        await commit({ ...currentData, wardrobe: nextWardrobe });
+        await commitWardrobe(nextWardrobe);
         return savedItem;
       } catch (cause) {
         if (copiedImageUri) {
@@ -95,7 +95,7 @@ export function createWardrobeActions({
         const nextWardrobe = currentData.wardrobe.map((item) =>
           item.id === itemId ? updatedItem : item,
         );
-        await commit({ ...currentData, wardrobe: nextWardrobe });
+        await commitWardrobe(nextWardrobe);
         if (nextImageUri !== previousItem.imageUri) {
           await removeStoredImage(previousItem.imageUri);
         }
@@ -123,7 +123,7 @@ export function createWardrobeActions({
         const nextWardrobe = currentData.wardrobe.filter(
           (item) => item.id !== itemId,
         );
-        await commit({ ...currentData, wardrobe: nextWardrobe });
+        await commitWardrobe(nextWardrobe);
         await removeStoredImage(previousItem.imageUri);
       } catch (cause) {
         throw reportError(cause, "Could not remove wardrobe item.");

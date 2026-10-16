@@ -29,8 +29,8 @@ test("the wardrobe search count follows saved edits and removals", async () => {
   };
   const actions = createWardrobeActions({
     getData: () => data,
-    commit: async (next) => {
-      data = next;
+    commitWardrobe: async (wardrobe) => {
+      data = { ...data, wardrobe };
     },
     copyImageToAppDocuments: async (uri) => uri,
     removeStoredImage: async () => {},

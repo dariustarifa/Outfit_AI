@@ -22,6 +22,7 @@ import {
   saveWeatherSnapshot,
 } from "../storage";
 import { createWardrobeActions } from "../wardrobe-actions";
+import { createAppDataCommitter } from "../app-data-commit";
 import type {
   Profile,
   OnboardingDraft,
@@ -65,6 +66,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const currentData = useRef<StoredAppData>({ profile: null, wardrobe: [] });
+  const appDataCommitter =
+    useRef<ReturnType<typeof createAppDataCommitter> | null>(null);
+  if (!appDataCommitter.current) {
+    appDataCommitter.current = createAppDataCommitter({
+      getData: () => currentData.current,
+      saveData: saveAppData,
+      onCommit(next) {
+        currentData.current = next;
+        setProfileState(next.profile);
+        setWardrobeState(next.wardrobe);
+        setError(null);
+      },
+    });
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -109,13 +124,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const commit = useCallback(async (next: StoredAppData) => {
-    await saveAppData(next);
-    currentData.current = next;
-    setProfileState(next.profile);
-    setWardrobeState(next.wardrobe);
-    setError(null);
-  }, []);
+  const commitProfile = useCallback(
+    (nextProfile: Profile | null) =>
+      appDataCommitter.current!((current) => ({
+        next: { ...current, profile: nextProfile },
+        result: current.profile,
+      })),
+    [],
+  );
 
   const persistWeather = useCallback(
     async (nextWeather: WeatherSnapshot | null) => {
@@ -146,9 +162,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setProfile = useCallback(
     async (nextProfile: Profile | null) => {
       try {
-        return await saveProfileWithPhoto(nextProfile, currentData.current, {
+        return await saveProfileWithPhoto(nextProfile, {
           copyProfilePhotoToAppDocuments,
-          commit,
+          commitProfile,
           removeStoredImage,
           removeUnreferencedStoredImage,
         });
@@ -159,7 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw nextError;
       }
     },
-    [commit],
+    [commitProfile],
   );
 
   const updateProfile = useCallback(
@@ -172,13 +188,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () =>
       createWardrobeActions({
         getData: () => currentData.current,
-        commit,
+        commitWardrobe: (nextWardrobe) =>
+          appDataCommitter.current!((current) => ({
+            next: { ...current, wardrobe: nextWardrobe },
+            result: undefined,
+          })),
         copyImageToAppDocuments,
         removeStoredImage,
         removeUnreferencedStoredImage,
         onError: setError,
       }),
-    [commit],
+    [],
   );
   const { addItem, updateItem, removeItem } = wardrobeActions;
 

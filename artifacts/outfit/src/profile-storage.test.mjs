@@ -95,7 +95,9 @@ function createEnvironment(platform) {
   let currentData = { profile: null, wardrobe: [] };
   const dependencies = {
     copyProfilePhotoToAppDocuments: storage.copyProfilePhotoToAppDocuments,
-    async commit(next) {
+    async commitProfile(profile) {
+      const previousProfile = currentData.profile;
+      const next = { ...currentData, profile };
       if (failNextMetadataWrite) {
         failNextMetadataWrite = false;
         throw new Error("Profile metadata write failed.");
@@ -106,6 +108,7 @@ function createEnvironment(platform) {
         failAfterMetadataWrite = false;
         throw new Error("Profile metadata write reported a failure.");
       }
+      return previousProfile;
     },
     removeStoredImage: storage.removeStoredImage,
     removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
@@ -116,7 +119,7 @@ function createEnvironment(platform) {
     fileSystem,
     resizeCalls,
     save: (nextProfile) =>
-      saveProfileWithPhoto(nextProfile, currentData, dependencies),
+      saveProfileWithPhoto(nextProfile, dependencies),
     async reload() {
       currentData = await storage.loadAppData();
       return currentData;

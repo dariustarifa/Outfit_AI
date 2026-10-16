@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createAppDataCommitter } from "./app-data-commit.ts";
 import { createLocalStorage } from "./storage-core.ts";
 import { createWardrobeActions } from "./wardrobe-actions.ts";
 import { saveGallerySelection } from "./gallery-save.ts";
@@ -82,23 +83,32 @@ function createTestEnvironment(platform = "ios") {
   let storage = createStorage();
 
   let currentData = { profile: null, wardrobe: [] };
+  const commitData = createAppDataCommitter({
+    getData: () => currentData,
+    saveData: (next) => storage.saveAppData(next),
+    onCommit(next) {
+      currentData = next;
+    },
+  });
   async function saveProfile(profile) {
-    return saveProfileWithPhoto(profile, currentData, {
+    return saveProfileWithPhoto(profile, {
       copyProfilePhotoToAppDocuments: storage.copyProfilePhotoToAppDocuments,
-      async commit(next) {
-        await storage.saveAppData(next);
-        currentData = next;
-      },
+      commitProfile: (nextProfile) =>
+        commitData((current) => ({
+          next: { ...current, profile: nextProfile },
+          result: current.profile,
+        })),
       removeStoredImage: storage.removeStoredImage,
       removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
     });
   }
   const actions = createWardrobeActions({
     getData: () => currentData,
-    async commit(next) {
-      await storage.saveAppData(next);
-      currentData = next;
-    },
+    commitWardrobe: (wardrobe) =>
+      commitData((current) => ({
+        next: { ...current, wardrobe },
+        result: undefined,
+      })),
     copyImageToAppDocuments: storage.copyImageToAppDocuments,
     removeStoredImage: storage.removeStoredImage,
     removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
@@ -157,6 +167,63 @@ function createDeferred() {
   return { promise, resolve, reject };
 }
 
+function createOverlappingSaveEnvironment({ failFirstWrite = false } = {}) {
+  const initialProfile = {
+    name: "Before",
+    bodyPhotoUri: "",
+    onboardingCompleted: true,
+  };
+  let currentData = { profile: initialProfile, wardrobe: [] };
+  let writeCount = 0;
+  const firstWriteStarted = createDeferred();
+  const releaseFirstWrite = createDeferred();
+  const commitData = createAppDataCommitter({
+    getData: () => currentData,
+    async saveData() {
+      writeCount += 1;
+      if (writeCount === 1) {
+        firstWriteStarted.resolve();
+        await releaseFirstWrite.promise;
+        if (failFirstWrite) throw new Error("First commit failed.");
+      }
+    },
+    onCommit(next) {
+      currentData = next;
+    },
+  });
+  const saveProfile = (profile) =>
+    saveProfileWithPhoto(profile, {
+      copyProfilePhotoToAppDocuments: async (uri) => uri,
+      commitProfile: (nextProfile) =>
+        commitData((current) => ({
+          next: { ...current, profile: nextProfile },
+          result: current.profile,
+        })),
+      removeStoredImage: async () => {},
+      removeUnreferencedStoredImage: async () => {},
+    });
+  const actions = createWardrobeActions({
+    getData: () => currentData,
+    commitWardrobe: (wardrobe) =>
+      commitData((current) => ({
+        next: { ...current, wardrobe },
+        result: undefined,
+      })),
+    copyImageToAppDocuments: async (uri) => uri,
+    removeStoredImage: async () => {},
+    removeUnreferencedStoredImage: async () => {},
+    onError() {},
+  });
+
+  return {
+    actions,
+    firstWriteStarted: firstWriteStarted.promise,
+    getData: () => currentData,
+    releaseFirstWrite: () => releaseFirstWrite.resolve(),
+    saveProfile,
+  };
+}
+
 function createControlledWardrobeActions({
   initialWardrobe = [],
   failFirstCommit = false,
@@ -168,14 +235,14 @@ function createControlledWardrobeActions({
   const errors = [];
   const actions = createWardrobeActions({
     getData: () => currentData,
-    async commit(next) {
+    async commitWardrobe(wardrobe) {
       commitCount += 1;
       if (commitCount === 1) {
         firstCommitStarted.resolve();
         await releaseFirstCommit.promise;
         if (failFirstCommit) throw new Error("First commit failed.");
       }
-      currentData = next;
+      currentData = { ...currentData, wardrobe };
     },
     copyImageToAppDocuments: async (uri) => uri,
     removeStoredImage: async () => {},
@@ -346,6 +413,70 @@ test("overlapping wardrobe additions retain both items", async () => {
     env.getData().wardrobe.map((item) => item.note),
     ["First", "Second"],
   );
+});
+
+test("overlapping profile then wardrobe saves retain both changes", async () => {
+  const env = createOverlappingSaveEnvironment();
+  const profileSave = env.saveProfile({
+    ...env.getData().profile,
+    name: "Profile saved",
+  });
+  await env.firstWriteStarted;
+  const wardrobeSave = env.actions.addItem({
+    imageUri: "file:///picker/new-item.jpg",
+    note: "Wardrobe saved",
+  });
+
+  env.releaseFirstWrite();
+  await Promise.all([profileSave, wardrobeSave]);
+
+  assert.equal(env.getData().profile.name, "Profile saved");
+  assert.deepEqual(env.getData().wardrobe.map((item) => item.note), [
+    "Wardrobe saved",
+  ]);
+});
+
+test("overlapping wardrobe then profile saves retain both changes", async () => {
+  const env = createOverlappingSaveEnvironment();
+  const wardrobeSave = env.actions.addItem({
+    imageUri: "file:///picker/new-item.jpg",
+    note: "Wardrobe saved",
+  });
+  await env.firstWriteStarted;
+  const profileSave = env.saveProfile({
+    ...env.getData().profile,
+    name: "Profile saved",
+  });
+
+  env.releaseFirstWrite();
+  await Promise.all([wardrobeSave, profileSave]);
+
+  assert.equal(env.getData().profile.name, "Profile saved");
+  assert.deepEqual(env.getData().wardrobe.map((item) => item.note), [
+    "Wardrobe saved",
+  ]);
+});
+
+test("a failed profile write does not block an overlapping wardrobe save", async () => {
+  const env = createOverlappingSaveEnvironment({ failFirstWrite: true });
+  const profileSave = env.saveProfile({
+    ...env.getData().profile,
+    name: "Unsaved profile",
+  });
+  await env.firstWriteStarted;
+  const wardrobeSave = env.actions.addItem({
+    imageUri: "file:///picker/new-item.jpg",
+    note: "Wardrobe saved",
+  });
+
+  env.releaseFirstWrite();
+  await assert.rejects(profileSave, /First commit failed/);
+  await wardrobeSave;
+
+  assert.equal(env.getData().profile.name, "Before");
+  assert.deepEqual(env.getData().wardrobe.map((item) => item.note), [
+    "Wardrobe saved",
+  ]);
 });
 
 test("an overlapping edit and delete both remain saved", async () => {

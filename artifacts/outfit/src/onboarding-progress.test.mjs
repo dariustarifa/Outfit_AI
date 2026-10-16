@@ -202,11 +202,14 @@ test("a failed profile save keeps onboarding on the same step and can be retried
   });
   let currentData = { profile: null, wardrobe: [] };
   const persistProfile = (nextProfile) =>
-    saveProfileWithPhoto(nextProfile, currentData, {
+    saveProfileWithPhoto(nextProfile, {
       copyProfilePhotoToAppDocuments: storage.copyProfilePhotoToAppDocuments,
-      async commit(nextData) {
+      async commitProfile(profile) {
+        const previousProfile = currentData.profile;
+        const nextData = { ...currentData, profile };
         await storage.saveAppData(nextData);
         currentData = nextData;
+        return previousProfile;
       },
       removeStoredImage: storage.removeStoredImage,
       removeUnreferencedStoredImage: storage.removeUnreferencedStoredImage,
