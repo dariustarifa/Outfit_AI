@@ -11,17 +11,18 @@ import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { nativeLayout } from "@workspace/outfit-design-system/lib/native-theme";
-import { useTheme } from "@/src/theme";
+import { radius, useTheme } from "@/src/theme";
 import { tapLight } from "@/src/haptics";
 
 export interface PopRect {
@@ -99,14 +100,11 @@ export function usePop() {
   return context;
 }
 
-const OPEN_SPRING = { damping: 18, stiffness: 260, mass: 1 };
-const CLOSE_SPRING = { damping: 28, stiffness: 320, mass: 1 };
-
 export function PopHost() {
   const { pop, closing, close, finishClose } = usePop();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight } = useWindowDimensions();
   const progress = useSharedValue(0);
   const [glassReady, setGlassReady] = useState(false);
 
@@ -118,15 +116,22 @@ export function PopHost() {
     }
 
     if (closing) {
-      progress.value = withSpring(0, CLOSE_SPRING, (finished) => {
-        if (finished) runOnJS(finishClose)();
-      });
+      progress.value = withTiming(
+        0,
+        { duration: 240, easing: Easing.out(Easing.cubic) },
+        (finished) => {
+          if (finished) runOnJS(finishClose)();
+        },
+      );
       return;
     }
 
     setGlassReady(false);
     progress.value = 0;
-    progress.value = withSpring(1, OPEN_SPRING);
+    progress.value = withTiming(1, {
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+    });
   }, [closing, finishClose, pop, progress]);
 
   useAnimatedReaction(
@@ -136,65 +141,22 @@ export function PopHost() {
     },
   );
 
-  const target =
+  const sheetHeight =
     pop?.size === "large"
-      ? {
-          x: 16,
-          y: insets.top + 16,
-          width: Math.max(0, screenWidth - 32),
-          height: Math.max(
-            0,
-            screenHeight - insets.top - insets.bottom - 32,
-          ),
-        }
-      : {
-          x: 24,
-          y: (screenHeight - Math.min(screenHeight * 0.72, 560)) / 2,
-          width: Math.max(0, screenWidth - 48),
-          height: Math.min(screenHeight * 0.72, 560),
-        };
-  const origin = pop?.rect ?? target;
-  const originX = origin.x;
-  const originY = origin.y;
-  const originWidth = origin.width;
-  const originHeight = origin.height;
-  const destinationX = target.x;
-  const destinationY = target.y;
-  const destinationWidth = target.width;
-  const destinationHeight = target.height;
-  const originRadius = pop?.radius ?? 16;
-  const destinationRadius = pop?.size === "large" ? 28 : 24;
+      ? Math.max(0, screenHeight - insets.top)
+      : Math.min(screenHeight * 0.72, 560);
   const frameStyle = useAnimatedStyle(() => ({
-    left: interpolate(
+    height: sheetHeight,
+    transform: [
+      {
+        translateY: interpolate(
       progress.value,
       [0, 1],
-      [originX, destinationX],
-      Extrapolation.EXTEND,
-    ),
-    top: interpolate(
-      progress.value,
-      [0, 1],
-      [originY, destinationY],
-      Extrapolation.EXTEND,
-    ),
-    width: interpolate(
-      progress.value,
-      [0, 1],
-      [originWidth, destinationWidth],
-      Extrapolation.EXTEND,
-    ),
-    height: interpolate(
-      progress.value,
-      [0, 1],
-      [originHeight, destinationHeight],
-      Extrapolation.EXTEND,
-    ),
-    borderRadius: interpolate(
-      progress.value,
-      [0, 1],
-      [originRadius, destinationRadius],
-      Extrapolation.EXTEND,
-    ),
+          [sheetHeight + 24, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
   }));
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
@@ -288,7 +250,12 @@ export function PopHost() {
           </Animated.View>
           <Animated.View
             pointerEvents={glassReady ? "auto" : "none"}
-            style={[StyleSheet.absoluteFill, styles.detail, contentStyle]}
+            style={[
+              StyleSheet.absoluteFill,
+              styles.detail,
+              { paddingBottom: insets.bottom + nativeLayout.baseSpacing * 4 },
+              contentStyle,
+            ]}
           >
             {pop.content(close, glassReady)}
           </Animated.View>
@@ -313,7 +280,12 @@ const styles = StyleSheet.create({
   },
   container: {
     position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     overflow: "hidden",
+    borderTopLeftRadius: radius.panel,
+    borderTopRightRadius: radius.panel,
     zIndex: 1,
   },
   dragHandleArea: {
