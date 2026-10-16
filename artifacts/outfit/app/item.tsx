@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, usePathname } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { ArrowLeft, Camera, ImagePlus, Save, Trash2, X } from "lucide-react-native";
@@ -27,10 +27,32 @@ import {
 import { useTheme } from "@/src/theme";
 import { useApp } from "@/src/context/AppContext";
 import { selection, success } from "@/src/haptics";
+import {
+  galleryPickerRecovery,
+  getGalleryPickerOutcome,
+} from "@/src/gallery-picker-recovery-storage";
+import type { GalleryPickerIntent } from "@/src/gallery-picker-recovery";
 
 export default function WardrobeItemScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
-  return <WardrobeItemEditor id={id} onClose={() => router.back()} />;
+  const { id, returnTo, galleryRecovery } = useLocalSearchParams<{
+    id?: string;
+    returnTo?: string;
+    galleryRecovery?: string;
+  }>();
+  const close = () => {
+    if (returnTo === "home" || returnTo === "wardrobe") {
+      router.replace(returnTo as never);
+    } else {
+      router.back();
+    }
+  };
+  return (
+    <WardrobeItemEditor
+      id={id}
+      recoveryKey={galleryRecovery}
+      onClose={close}
+    />
+  );
 }
 
 export function WardrobeItemEditor({
@@ -38,11 +60,13 @@ export function WardrobeItemEditor({
   onClose,
   popup = false,
   glassReady = true,
+  recoveryKey,
 }: {
   id?: string;
   onClose?: () => void;
   popup?: boolean;
   glassReady?: boolean;
+  recoveryKey?: string;
 }) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -58,6 +82,7 @@ export function WardrobeItemEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [mediaPermission, requestMediaPermission, getMediaPermission] =
     ImagePicker.useMediaLibraryPermissions();
+  const pathname = usePathname();
   const dismiss = useCallback(() => {
     if (onClose) onClose();
     else router.back();
@@ -83,6 +108,39 @@ export function WardrobeItemEditor({
     setPhotoUri(existingItem.imageUri);
     setFormReady(true);
   }, [existingItem, id, loading]);
+
+  useEffect(() => {
+    if (!recoveryKey || !formReady) return;
+    let active = true;
+    void (async () => {
+      const record = await galleryPickerRecovery.load();
+      if (
+        !active ||
+        !record ||
+        record.intent.target !== "item" ||
+        !record.outcome ||
+        (id && record.intent.itemId !== id)
+      ) {
+        return;
+      }
+
+      setNote(record.intent.note);
+      setPhotoUri(
+        record.outcome.status === "selected"
+          ? record.outcome.assets[0]?.uri ?? record.intent.photoUri
+          : record.intent.photoUri,
+      );
+      if (record.outcome.status === "error") {
+        setMessage("No se pudo abrir la galería. Inténtalo de nuevo.");
+      }
+      await galleryPickerRecovery.clear();
+    })().catch((error: unknown) => {
+      console.error("Unable to apply the recovered gallery selection.", error);
+    });
+    return () => {
+      active = false;
+    };
+  }, [formReady, id, recoveryKey]);
 
   const setPhoto = useCallback((uri: string) => {
     setPhotoUri(uri);
@@ -120,20 +178,48 @@ export function WardrobeItemEditor({
         }
       }
 
+      const returnTo =
+        pathname === "/home"
+          ? "home"
+          : pathname === "/wardrobe"
+            ? "wardrobe"
+            : "wardrobe";
+      const intent: GalleryPickerIntent = {
+        target: "item",
+        ...(id ? { itemId: id } : {}),
+        returnTo,
+        note,
+        photoUri,
+      };
+      await galleryPickerRecovery.saveIntent(intent);
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [4, 5],
         quality: 0.85,
       });
-      if (!result.canceled && result.assets[0]?.uri) {
-        setPhoto(result.assets[0].uri);
+      const outcome = getGalleryPickerOutcome(result);
+      await galleryPickerRecovery.saveOutcome(outcome);
+      if (outcome.status === "selected" && outcome.assets[0]?.uri) {
+        setPhoto(outcome.assets[0].uri);
         await selection();
+      } else if (outcome.status === "error") {
+        setMessage("No se pudo abrir la galería. Inténtalo de nuevo.");
       }
+      await galleryPickerRecovery.clear();
     } catch {
+      await galleryPickerRecovery.clear().catch(() => undefined);
       setMessage("No se pudo abrir la galería. Inténtalo de nuevo.");
     }
-  }, [mediaPermission?.granted, requestMediaPermission, setPhoto]);
+  }, [
+    id,
+    mediaPermission?.granted,
+    note,
+    pathname,
+    photoUri,
+    requestMediaPermission,
+    setPhoto,
+  ]);
 
   const save = useCallback(async () => {
     if (!photoUri || saving) return;

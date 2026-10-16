@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   Platform,
   StatusBar as NativeStatusBar,
@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Stack, usePathname } from "expo-router";
+import { Stack, usePathname, useRootNavigationState, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -21,6 +21,7 @@ import { useApp } from "@/src/context/AppContext";
 import { useFonts } from "expo-font";
 import { GradientBackground } from "@workspace/outfit-design-system/components/native/gradient-background";
 import * as SystemUI from "expo-system-ui";
+import { preparePendingGalleryPickerRecovery } from "@/src/gallery-picker-recovery-storage";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -79,6 +80,47 @@ function RootShellContent({
   theme: ReturnType<typeof useTheme>;
 }) {
   const { colors, isDark } = theme;
+  const router = useRouter();
+  const navigationState = useRootNavigationState();
+  const recoveryStarted = useRef(false);
+
+  useEffect(() => {
+    if (
+      Platform.OS !== "android" ||
+      !navigationState?.key ||
+      recoveryStarted.current
+    ) {
+      return;
+    }
+    recoveryStarted.current = true;
+
+    void preparePendingGalleryPickerRecovery()
+      .then((record) => {
+        if (!record) return;
+        const galleryRecovery = String(Date.now());
+        if (record.intent.target === "item") {
+          router.replace({
+            pathname: "/item",
+            params: {
+              ...(record.intent.itemId ? { id: record.intent.itemId } : {}),
+              returnTo: record.intent.returnTo,
+              galleryRecovery,
+            },
+          } as never);
+          return;
+        }
+        router.replace({
+          pathname: "/onboarding/wardrobe",
+          params: {
+            ...(record.intent.fromPlus ? { from: "plus" } : {}),
+            galleryRecovery,
+          },
+        } as never);
+      })
+      .catch((error: unknown) => {
+        console.error("Unable to recover the pending gallery selection.", error);
+      });
+  }, [navigationState?.key, router]);
 
   return (
     <>

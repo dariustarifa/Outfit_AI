@@ -40,6 +40,11 @@ import {
   saveGallerySelection,
   type GallerySaveProgress,
 } from "@/src/gallery-save";
+import {
+  galleryPickerRecovery,
+  getGalleryPickerOutcome,
+} from "@/src/gallery-picker-recovery-storage";
+import type { GalleryPickerIntent } from "@/src/gallery-picker-recovery";
 
 const WEB_SAFE_TOP = 67;
 const WEB_SAFE_BOTTOM = 34;
@@ -48,7 +53,10 @@ const screenHeight = Dimensions.get("screen").height;
 export default function WardrobeOnboardingScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, galleryRecovery } = useLocalSearchParams<{
+    from?: string;
+    galleryRecovery?: string;
+  }>();
   const fromPlus = from === "plus";
   const { profile, wardrobe, loading, addItem, setProfile } = useApp();
   const [cameraPermission, requestCameraPermission, getCameraPermission] =
@@ -144,32 +152,53 @@ export default function WardrobeOnboardingScreen() {
           }
         }
 
+        const intent: GalleryPickerIntent = {
+          target: "onboarding",
+          fromPlus,
+          allowMultiple,
+          note,
+          photoUri,
+        };
+        await galleryPickerRecovery.saveIntent(intent);
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ["images"],
           allowsMultipleSelection: allowMultiple,
           selectionLimit: allowMultiple ? 0 : 1,
           quality: 0.85,
         });
-        if (result.canceled || result.assets.length === 0) return;
+        const outcome = getGalleryPickerOutcome(result);
+        await galleryPickerRecovery.saveOutcome(outcome);
+        if (outcome.status === "cancelled") {
+          await galleryPickerRecovery.clear();
+          return;
+        }
+        if (outcome.status === "error") {
+          setError("No se pudo abrir la galería. Inténtalo de nuevo.");
+          await galleryPickerRecovery.clear();
+          return;
+        }
 
         if (!allowMultiple) {
-          const selectedPhoto = result.assets[0]?.uri;
+          const selectedPhoto = outcome.assets[0]?.uri;
           if (!selectedPhoto) {
             setError("No pudimos leer esa foto. Prueba a elegir otra.");
+            await galleryPickerRecovery.clear();
             return;
           }
           setPhotoUri(selectedPhoto);
           setNote("");
           setCameraReady(false);
+          await galleryPickerRecovery.clear();
           return;
         }
 
-        setGalleryProgress({ completed: 0, total: result.assets.length });
+        setGalleryProgress({ completed: 0, total: outcome.assets.length });
         const saved = await saveGallerySelection(
-          result.assets,
+          outcome.assets,
           addItem,
           setGalleryProgress,
         );
+        await galleryPickerRecovery.clear();
 
         if (saved.added > 0) {
           await success();
@@ -187,6 +216,7 @@ export default function WardrobeOnboardingScreen() {
           );
         }
       } catch {
+        await galleryPickerRecovery.clear().catch(() => undefined);
         setError("No se pudo abrir la galería. Inténtalo de nuevo.");
       } finally {
         setGallerySaving(false);
@@ -199,8 +229,85 @@ export default function WardrobeOnboardingScreen() {
       mediaPermission?.granted,
       requestMediaPermission,
       showToast,
+      fromPlus,
+      note,
+      photoUri,
     ],
   );
+
+  useEffect(() => {
+    if (!galleryRecovery) return;
+    let active = true;
+    void (async () => {
+      const record = await galleryPickerRecovery.load();
+      if (
+        !active ||
+        !record ||
+        record.intent.target !== "onboarding" ||
+        !record.outcome ||
+        record.intent.fromPlus !== fromPlus
+      ) {
+        return;
+      }
+
+      const { intent, outcome } = record;
+      setPhotoUri(intent.photoUri);
+      setNote(intent.note);
+      setCameraReady(false);
+
+      if (outcome.status === "error") {
+        setError("No se pudo abrir la galería. Inténtalo de nuevo.");
+      } else if (outcome.status === "selected" && intent.allowMultiple) {
+        setGallerySaving(true);
+        setGalleryProgress({ completed: 0, total: outcome.assets.length });
+        try {
+          const saved = await saveGallerySelection(
+            outcome.assets,
+            addItem,
+            setGalleryProgress,
+          );
+          if (saved.added > 0) {
+            await success();
+            showToast(
+              saved.added === 1
+                ? "1 prenda añadida"
+                : `${saved.added} prendas añadidas`,
+            );
+          }
+          if (saved.failed > 0) {
+            setError(
+              saved.added > 0
+                ? `No se pudieron guardar ${saved.failed} fotos.`
+                : "No se pudieron guardar las fotos. Inténtalo de nuevo.",
+            );
+          }
+        } finally {
+          setGallerySaving(false);
+          setGalleryProgress(null);
+        }
+      } else if (outcome.status === "selected") {
+        const selectedPhoto = outcome.assets[0]?.uri;
+        if (selectedPhoto) {
+          setPhotoUri(selectedPhoto);
+          setNote("");
+        } else {
+          setError("No pudimos leer esa foto. Prueba a elegir otra.");
+        }
+      }
+      await galleryPickerRecovery.clear();
+    })().catch((recoveryError: unknown) => {
+      console.error("Unable to apply the recovered gallery selection.", recoveryError);
+      setError("No se pudo abrir la galería. Inténtalo de nuevo.");
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    addItem,
+    fromPlus,
+    galleryRecovery,
+    showToast,
+  ]);
 
   const requestCameraAccess = useCallback(async () => {
     setError("");
